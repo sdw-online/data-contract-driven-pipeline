@@ -12,10 +12,10 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
 # Pseudocode
 
 - Setup
-    - Import dependencies
-    - Import environment variables from .env file
-    - Get CSV file from Kaggle
-    - Create a sample dataset for testing purposes
+    - Import dependencies ✅ 
+    - Import environment variables from .env file ✅
+    - Get CSV file from Kaggle ✅ 
+    - Create a sample dataset for testing purposes ✅ 
 
 
 - Bronze layer
