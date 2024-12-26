@@ -104,6 +104,9 @@ except ClientError as e:
 
 
 
+
+# 2.1. Create BRONZE S3 bucket
+ 
 try:
     response = s3_client.list_buckets()
     existing_buckets = [bucket['Name'] for bucket in response.get("Buckets", [])]
@@ -121,3 +124,20 @@ except ClientError as e:
     raise
 
 
+# 2.2. Upload source CSV file
+
+local_file_path = "pii_dataset.csv"
+file_name = "pii_dataset.csv"
+
+try:
+    response = s3_client.list_objects_v2(Bucket=BRONZE_BUCKET)
+    files_in_bucket = [obj["Key"] for obj in response.get("Contents", [])]
+
+    if file_name not in files_in_bucket:
+        print(f"File {file_name} does not exist in '{BRONZE_BUCKET}'. Now uploading file to bucket...")
+        s3_client.upload_file(local_file_path, BRONZE_BUCKET, file_name)
+        print(f"File '{file_name}' uploaded successfully")
+    else:
+        print(f"File already exists in bucket '{BRONZE_BUCKET}' ")
+except ClientError as e:
+    print(f"Failed to check/upload file in bucket '{BRONZE_BUCKET}': {e}")

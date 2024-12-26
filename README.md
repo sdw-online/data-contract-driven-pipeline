@@ -19,10 +19,10 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
 
 
 - Bronze layer
-    - Check if bronze S3 bucket exists
-        - If not, create it
-    - Check if source CSV file exists in bucket
-        - If not, upload to bronze bucket
+    - Check if bronze S3 bucket exists ✅
+        - If not, create it ✅ 
+    - Check if source CSV file exists in bucket✅
+        - If not, upload to bronze bucket✅git add
     - Read the data from the bronze bucket into the pandas dataframe
     - Validate the raw data against the bronze-to-silver (B2S) data contract
         - If this doesn’t exist, define the validation rules and constraints in the bronze-to-silver (B2S) data contract
