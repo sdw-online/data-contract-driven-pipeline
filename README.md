@@ -11,7 +11,7 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
 
 # Pseudocode
 
-- Setup
+- Setup ✅ 
     - Import dependencies ✅ 
     - Import environment variables from .env file ✅
     - Get CSV file from Kaggle ✅ 

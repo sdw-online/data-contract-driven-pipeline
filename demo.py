@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 
 
 """
-SETUP
+-- SETUP
 
 1. Load env variables
 2. Validate environment variables (AWS + Postgres)
@@ -42,7 +42,7 @@ POSTGRES_CONFIG = {
 
 
 # Display the environment variables
-SHOW_ENV_VARIABLES = True
+SHOW_ENV_VARIABLES = False
 
 if SHOW_ENV_VARIABLES:
     print("Showing env variables:\n")
@@ -85,3 +85,39 @@ try:
 except ClientError as e:
     print(f"[ERROR] - Failed to initialize S3 client: {e}")
     raise
+
+
+
+
+
+"""
+
+-- Bronze layer 
+
+1. Check if bucket exist. Create it if it doesn't 
+2. Check if CSV data is in the bucket. Upload CSV to bucket if it isn't
+3. Read data from bronze bucket into pandas df 
+4. Validate the data against the bronze-to-silver data contract. Create contract if it doesn't exist.  
+5. Proceed to the next stage if validation checks pass
+
+"""
+
+
+
+try:
+    response = s3_client.list_buckets()
+    existing_buckets = [bucket['Name'] for bucket in response.get("Buckets", [])]
+    if BRONZE_BUCKET not in existing_buckets:
+        print(f"[INFO] - Bucket '{BRONZE_BUCKET}' does not exist. Now creating it... ")
+        s3_client.create_bucket(
+            Bucket=BRONZE_BUCKET,
+            CreateBucketConfiguration={"LocationConstraint": AWS_REGION},
+        )
+        print(f"[INFO] - Bucket '{BRONZE_BUCKET}' created successfully. ")
+    else:
+        print(f"Bucket '{BRONZE_BUCKET}' already exists")
+except ClientError as e:
+    print(f"[ERROR] - Failed to check/create bucket '{BRONZE_BUCKET}': {e} ")
+    raise
+
+
