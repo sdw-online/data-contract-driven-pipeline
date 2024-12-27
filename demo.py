@@ -19,6 +19,7 @@ from dataclasses import dataclass
 """
 
 
+
 # --- SETUP FUNCTIONS ---
 def load_env_variables(SHOW_ENV_VARIABLES=False):
     
@@ -68,12 +69,12 @@ def load_env_variables(SHOW_ENV_VARIABLES=False):
     # Display the environment variables
     if SHOW_ENV_VARIABLES:
         print("Showing env variables:\n")
-        print(f"AWS Access key:     {aws_config["AWS_ACCESS_KEY"]}")
-        print(f"AWS Secret Key:     {aws_config["AWS_SECRET_KEY"]}")
-        print(f"AWS Region:         {aws_config["AWS_REGION"]}")
-        print(f"Bronze Bucket:      {bucket_config["BRONZE_BUCKET"]}")
-        print(f"Silver bucket:      {bucket_config["SILVER_BUCKET"]}")
-        print(f"Gold Bucket:        {bucket_config["GOLD_BUCKET"]}")
+        print(f"AWS Access key:     {aws_config['AWS_ACCESS_KEY'] }")
+        print(f"AWS Secret Key:     {aws_config['AWS_SECRET_KEY'] }")
+        print(f"AWS Region:         {aws_config['AWS_REGION'] }")
+        print(f"Bronze Bucket:      {bucket_config['BRONZE_BUCKET'] }")
+        print(f"Silver bucket:      {bucket_config['SILVER_BUCKET'] }")
+        print(f"Gold Bucket:        {bucket_config['GOLD_BUCKET'] }")
         print(f"Postgres Config:    {postgres_config}")
     else:
         print("Setting up environment...")
@@ -97,6 +98,8 @@ def initialize_s3_client(aws_config):
             region_name=aws_config["AWS_REGION"]
         )
         print("[INFO] - S3 client initialized successfully")
+        
+        return s3_client
 
     except ClientError as e:
         print(f"[ERROR] - Failed to initialize S3 client: {e}")
@@ -148,6 +151,75 @@ def download_file_from_s3(s3_client, bucket_name, file_name, local_path):
     except ClientError as e:
         raise RuntimeError(f"[ERROR] - Unable to download file '{file_name}': {e}")
 
+# --- SELECTING DATASET ---
+@dataclass(frozen=True)  # Make the class immutable 
+class PIIDataSet:
+    local_path: str
+    file_name: str
+
+    @staticmethod
+    def select_dataset(use_sample=False):
+
+        main_dataset = PIIDataSet(local_path="pii_dataset.csv", file_name="pii_dataset.csv")
+        sample_dataset = PIIDataSet(local_path="sample_dataset.csv", file_name="sample_dataset.csv")
+
+        if use_sample:
+            print("\nUsing 'sample' dataset for this data workflow...")
+            return sample_dataset
+        
+        else:
+            print("\nUsing 'main' dataset for this data workflow...")
+            return main_dataset
+
+        
+
+
+# --- DATA VALIDATION ---
+
+def validate_data(df, contract_path):
+    """Validate data against a JSON data contract."""
+    if not os.path.exists(contract_path):
+        raise FileNotFoundError(f"[ERROR] - Data contract '{contract_path}' not found.")
+
+    with open(contract_path, "r") as file:
+        contract = json.load(file)
+
+    # Validate row count
+    row_count_min = contract["validation_rules"].get("row_count_min", 0)
+    if len(df) < row_count_min:
+        raise ValueError(f"[ERROR] - Row count validation failed: Expected at least {row_count_min} rows.")
+
+    # Validate column count
+    expected_columns = contract["schema"]["columns"]
+    if len(df.columns) != len(expected_columns):
+        raise ValueError(f"[ERROR] - Column count validation failed.")
+
+    # Validate columns
+    for col_spec in expected_columns:
+        col_name = col_spec["name"]
+        col_type = col_spec["type"]
+        constraints = col_spec.get("constraints", {})
+
+        if col_name not in df.columns:
+            raise ValueError(f"[ERROR] - Missing required column: '{col_name}'.")
+
+        if col_type == "string" and not pd.api.types.is_string_dtype(df[col_name]):
+            raise TypeError(f"[ERROR] - Column '{col_name}' should be of type 'string'.")
+
+        if col_type == "integer" and not pd.api.types.is_integer_dtype(df[col_name]):
+            raise TypeError(f"[ERROR] - Column '{col_name}' should be of type 'integer'.")
+
+        if constraints.get("not_null") and df[col_name].isnull().any():
+            raise ValueError(f"[ERROR] - Column '{col_name}' contains NULL values.")
+
+    print("Data validation passed successfully ")
+
+
+
+        
+
+
+
 """
 
 -- Bronze layer 
@@ -163,165 +235,42 @@ def download_file_from_s3(s3_client, bucket_name, file_name, local_path):
 
 
 
-# 2.1. Create BRONZE S3 bucket
- 
-try:
-    response = s3_client.list_buckets()
-    existing_buckets = [bucket['Name'] for bucket in response.get("Buckets", [])]
-    if BRONZE_BUCKET not in existing_buckets:
-        print(f"[INFO] - Bucket '{BRONZE_BUCKET}' does not exist. Now creating it... ")
-        s3_client.create_bucket(
-            Bucket=BRONZE_BUCKET,
-            CreateBucketConfiguration={"LocationConstraint": AWS_REGION},
-        )
-        print(f"[INFO] - Bucket '{BRONZE_BUCKET}' created successfully. ")
-    else:
-        print(f"Bucket '{BRONZE_BUCKET}' already exists")
-except ClientError as e:
-    print(f"[ERROR] - Failed to check/create bucket '{BRONZE_BUCKET}': {e} ")
-    raise
+# --- MAIN WORKFLOW --- 
 
 
-# 2.2. Upload source CSV file
-@dataclass(frozen=True)  # Make the class immutable 
-class PIIDataSet:
-    local_path: str
-    file_name: str
-
-main_dataset    =   PIIDataSet(local_path="pii_dataset.csv", file_name="pii_dataset.csv")
-sample_dataset  =   PIIDataSet(local_path="sample_dataset.csv", file_name="sample_dataset.csv")
-
-USE_SAMPLE_DATA         =   True
-
-if USE_SAMPLE_DATA:
-    print(f"\nUsing 'sample' dataset for this data workflow... ")
-    selected_dataset = sample_dataset
-else:
-    print(f"\nUsing 'main' dataset for this data workflow... ")
-    selected_dataset = main_dataset
-
-file_name               =   selected_dataset.file_name
-local_source_file_path  =   selected_dataset.local_path
-
-print(f"File name: {file_name}")
-print(f"File path: {local_source_file_path}")
-
-
-
-try:
-    response = s3_client.list_objects_v2(Bucket=BRONZE_BUCKET)
-    files_in_bucket = [obj["Key"] for obj in response.get("Contents", [])]
-
-    if file_name not in files_in_bucket:
-        print(f"File {file_name} does not exist in '{BRONZE_BUCKET}'. Now uploading file to bucket...")
-        s3_client.upload_file(local_source_file_path, BRONZE_BUCKET, file_name)
-        print(f"File '{file_name}' uploaded successfully")
-    else:
-        print(f"File already exists in bucket '{BRONZE_BUCKET}' ")
-except ClientError as e:
-    print(f"Failed to check/upload file in bucket '{BRONZE_BUCKET}': {e}")
-
-
-
-# 2.3. Read CSV file into Pandas df
-
-try:
-    local_bronze_file_path = "bronze_csv_file.csv"
-    print(f"Downloading file '{file_name}' from bucket '{BRONZE_BUCKET}'... ")
-    s3_client.download_file(BRONZE_BUCKET, file_name, local_bronze_file_path)
-    df = pd.read_csv(local_bronze_file_path) 
-    print(f"Loaded bronze data into pandas dataframe successfully.")
-    print(df.head())
-except ClientError as e:
-    print(f"[ERROR] - Unable to read CSV data from '{BRONZE_BUCKET}' bucket into pandas df: {e}")
-
-
-
-# 2.4. Validate data against the contract expectations 
-
-b2s_contract_path = "01_B2S_DataContract.json"
-
-try:
-    # Load data contract 
-    if not os.path.exists(b2s_contract_path):
-        raise FileNotFoundError(f"[ERROR] - Data contract '{b2s_contract_path}' not found...")
+def run_data_pipeline(USE_SAMPLE_DATA=True):
     
-    with open(b2s_contract_path, "r") as contract_file:
-        b2s_contract = json.load(contract_file)
-
-    # Display the contract expectations in the console 
-    print("\n --- Loading the BRONZE-TO-SILVER data contract...:")
-    print(json.dumps(b2s_contract, indent=4))
-    print("\nValidating the contract against the following expectations:")
-
-    schema = b2s_contract["schema"]["columns"]
-    for col in schema:
-        print(f" - Column '{col['name']}': Type = {col['type']}, Constraints: {col.get('constraints', 'None')}")
-
-    validation_rules = b2s_contract["validation_rules"]
-    print(f"\n - Min row count: {validation_rules.get('row_count_min', 'Not specified')}")
-
-    print("\n - Starting validation...")
-
-
-    # -- Check total row count
-    expected_min_row_count = validation_rules.get('row_count_min', 0)
-    actual_row_count = len(df)
-    if actual_row_count < expected_min_row_count:
-        raise ValueError(f"Row count validation failed. Expected at least {expected_min_row_count} records in the data...")
     
-    # --- Check total column count 
-    actual_col_count = len(df.columns)
-    expected_col_count = validation_rules.get('column_count', actual_col_count)
-    if actual_col_count != expected_col_count:
-        raise ValueError(f"Column count validation error. Expected '{expected_col_count}' columns but found '{actual_col_count}' instead... ")
-    
-    # --- Validate columns and data types
-    for column in schema:
-        col_name = column["name"]
-        col_type = column["type"]
-        constraints = column.get("constraints", {})
-
-        # --- Check if column exists 
-        list_of_column_names = df.columns 
-        if col_name not in list_of_column_names:
-            raise ValueError(f">>> Missing required column: '{col_name}' <<< ")
-
-        # --- Check data types
-        if col_type == "string" and not pd.api.types.is_string_dtype(df[col_name]):
-            raise TypeError(f">>> Column '{col_name}' should be of type 'string'... ")
-        
-        if col_type == "integer" and not pd.api.types.is_integer_dtype(df[col_name]):
-            raise TypeError(f">>> Column '{col_name}' should be of type 'integer'... ")
-     
-
-        # --- Check NULL 
-        if constraints.get("not_null") and df[col_name].isnull().any():
-            raise ValueError(f"Column '{col_name}' contains NULL values...")
-        
-
-        # --- Check character count   
-        if "max_length" in constraints:
-
-            expected_max_char_length            =   constraints["max_length"]
-            actual_char_len_of_longest_value    =   df[col_name].apply(lambda x: len(str(x)) if pd.notnull(x) else 0).max()
-
-            if actual_char_len_of_longest_value > expected_max_char_length:
-                raise ValueError(f">>> Column '{col_name}' exceeds the max length of {expected_max_char_length} characters...")
+    # -- 1. Load configs
+    aws_config, bucket_config, _ = load_env_variables()
 
 
-        # --- Check minimum value 
-        if "min_value" in constraints:
-            
-            expected_min_value              =   constraints["min_value"]
-            actual_min_value_in_column      =   df[col_name].min()
+    # -- 2. Initialize S3 buckets 
+    s3_client = initialize_s3_client(aws_config)
 
-            if actual_min_value_in_column < expected_min_value:
-                raise ValueError(f">>> Column '{col_name}' has values below the minimum value of '{expected_min_value}' ")
-            
-    
-    print("Data validation passed for BRONZE-TO_SILVER data contract successfully. ")
-        
+    # -- 3. Check if bucket exists
+    check_if_bucket_exists(s3_client, bucket_config["BRONZE_BUCKET"], aws_config["AWS_REGION"])
 
-except Exception as e:
-    print(f"[ERROR] - Unexpected error during validation: {e}") 
+
+    # -- 4. Select + process dataset
+    selected_dataset = PIIDataSet.select_dataset(USE_SAMPLE_DATA)
+
+    upload_file_to_s3(s3_client, 
+                      selected_dataset.local_path, 
+                      bucket_config["BRONZE_BUCKET"], 
+                      selected_dataset.file_name)
+
+    # -- 5. Download the file from S3
+    df = download_file_from_s3(
+        s3_client,
+        bucket_config["BRONZE_BUCKET"],
+        selected_dataset.file_name,
+        "bronze_csv_file.csv",
+    )
+
+    # -- 6. Validate the data 
+    validate_data(df, "01_B2S_DataContract.json")
+
+
+if __name__=="__main__":
+    run_data_pipeline()
