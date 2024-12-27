@@ -1,17 +1,28 @@
 {
-    "contract_name": "01_B2S_DataContract",
-    "version": "1.0",
+    "contract_name": "01_BronzeToSilver_DataContract",
+    "version": "1.1",
     "schema": {
         "columns": [
-            {"name": "document", "type": "string", "constraints": {"not_null": true}},
-            {"name": "name", "type": "string", "constraints": {"not_null": true, "max_length": 100 }},
-            {"name": "email", "type": "string"},
-            {"name": "phone", "type": "string"},
-            {"name": "len", "type": "integer", "constraints": {"min_value": 1}}
+            {"name": "document", "type": "string", "constraints": {"not_null": true, "unique": true}},
+            {"name": "text", "type": "string", "constraints": {"not_null": true}},
+            {"name": "tokens", "type": "string"},
+            {"name": "trailing_whitespace", "type": "boolean"},
+            {"name": "labels", "type": "string"},
+            {"name": "prompt", "type": "string"},
+            {"name": "prompt_id", "type": "integer", "constraints": {"not_null": true}},
+            {"name": "name", "type": "string", "constraints": {"not_null": true}},
+            {"name": "email", "type": "string", "constraints": {"not_null": true}},
+            {"name": "phone", "type": "string", "constraints": {"not_null": true}},
+            {"name": "job", "type": "string", "constraints": {"not_null": true}},
+            {"name": "address", "type": "string", "constraints": {"not_null": true}},
+            {"name": "username", "type": "string"},
+            {"name": "url", "type": "string"},
+            {"name": "hobby", "type": "string"},
+            {"name": "len", "type": "integer", "constraints": {"not_null": true}}
         ]
     },
     "validation_rules": {
-        "row_count_min": 1,
+        "row_count_min": 4400,
         "column_count": 16
     }
 }
