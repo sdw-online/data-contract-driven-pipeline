@@ -1,5 +1,5 @@
 {
-    "contract_name": "02_S2G_DataContract",
+    "contract_name": "02_SilverToGold_DataContract",
     "version": "1.0",
     "schema": {
         "columns": [

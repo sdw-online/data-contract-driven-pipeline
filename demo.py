@@ -172,6 +172,24 @@ class PIIDataSet:
             return main_dataset
 
         
+# --- TRANSFORMATION --- 
+def transform_data(df):
+    print("\n>>> Transforming raw data ...")
+    
+    # Extract + transform relevant columns
+    silver_df = df[["document", "name", "email", "phone", "len"]]
+    silver_df = silver_df.copy()
+    
+    # Remove whitespace from name column
+    silver_df["name"] = silver_df["name"].str.strip()
+
+    # Convert email characters to lowercase 
+    silver_df["email"] = silver_df["email"].str.lower()
+
+    print("Transformation in Silver layer completed successfully")
+
+    return silver_df
+
 
 
 # --- DATA VALIDATION ---
@@ -189,7 +207,7 @@ def validate_data(df, contract_path):
     schema = contract.get("schema", {})
     expected_columns = schema.get("columns", [])
 
-    # Bronze-to-Silver: Structural validation
+    # Bronze-to-Silver: data validation (structural)
     if "BronzeToSilver" in contract_name:
         print("\n>>> Performing bronze-to-silver data validation checks...")
 
@@ -212,7 +230,8 @@ def validate_data(df, contract_path):
         print("Validation passed successfully for Bronze-to-Silver contract.")
         return
 
-    # Silver-to-Gold: Full validation
+
+    # Silver-to-Gold data validation (content)
     if "SilverToGold" in contract_name:
         print("\n>>> Performing Silver-to-Gold data validation checks...")
 
@@ -262,7 +281,7 @@ def validate_data(df, contract_path):
             if constraints.get("not_null") and has_null_values:
                 raise ValueError(f"[ERROR] - Column '{col_name}' contains NULL values.")
             
-            
+
             has_duplicate_values = df[col_name].duplicated().any()
             if "unique" in constraints and has_duplicate_values:
                 raise ValueError(f"[ERROR] - Column '{col_name}' contains duplicate values.")
@@ -278,21 +297,10 @@ def validate_data(df, contract_path):
 
 
 
-        
 
 
 
-"""
 
--- Bronze layer 
-
-1. Check if bucket exist. Create it if it doesn't 
-2. Check if CSV data is in the bucket. Upload CSV to bucket if it isn't
-3. Read data from bronze bucket into pandas df 
-4. Validate the data against the bronze-to-silver data contract. Create contract if it doesn't exist.  
-5. Proceed to the next stage if validation checks pass
-
-"""
 
 
 
@@ -310,11 +318,14 @@ def run_data_pipeline(USE_SAMPLE_DATA=False):
     # -- 2. Initialize S3 buckets 
     s3_client = initialize_s3_client(aws_config)
 
-    # -- 3. Check if bucket exists
+
+    # --- BRONZE LAYER ---
+
+    # -- 1. Check if bucket exists
     check_if_bucket_exists(s3_client, bucket_config["BRONZE_BUCKET"], aws_config["AWS_REGION"])
 
 
-    # -- 4. Select + process dataset
+    # -- 2. Select + process dataset
     selected_dataset = PIIDataSet.select_dataset(USE_SAMPLE_DATA)
 
     upload_file_to_s3(s3_client, 
@@ -322,19 +333,39 @@ def run_data_pipeline(USE_SAMPLE_DATA=False):
                       bucket_config["BRONZE_BUCKET"], 
                       selected_dataset.file_name)
 
-    # -- 5. Download the file from S3
-    df = download_file_from_s3(
+    # -- 3. Download the file from S3
+    bronze_df = download_file_from_s3(
         s3_client,
         bucket_config["BRONZE_BUCKET"],
         selected_dataset.file_name,
         "bronze_csv_file.csv",
     )
 
-    # -- 6. Validate the data 
+    # -- 4. Validate the data 
     BronzeToSilver_DataContract     =   "01_B2S_DataContract.json" 
-    SilverToGold_DataCOntract       =   "02_S2G_DataContract.json"
 
-    validate_data(df, BronzeToSilver_DataContract)
+    validate_data(bronze_df, BronzeToSilver_DataContract)
+
+
+
+
+    # --- SILVER LAYER --- 
+    # -- 1. Transform raw data from bronze to silver layer  
+    silver_df = transform_data(bronze_df)
+
+    # -- 2. Validate silver data 
+    SilverToGold_DataContract       =   "02_S2G_DataContract.json"
+    validate_data(silver_df, SilverToGold_DataContract)
+
+    # -- 3. Save silver data to S3 bucket 
+    silver_file_name = "silver_layer.csv"
+    silver_df.to_csv(silver_file_name, index=False)
+    upload_file_to_s3(s3_client, silver_file_name, bucket_config["SILVER_BUCKET"], silver_file_name)
+
+    print("Silver layer data uploaded successfully ")
+     
+
+
 
 
 if __name__=="__main__":
