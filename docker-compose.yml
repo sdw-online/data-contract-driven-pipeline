@@ -32,11 +32,9 @@ services:
       - "8080:8080"
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./modules:/opt/airflow/modules
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
-      - ./output:/opt/airflow/output
-      - ./scripts:/opt/airflow/scripts
+      - ./logs:/opt/airflow/logs
     restart: always
     depends_on:
       - postgres
@@ -59,11 +57,9 @@ services:
       TZ: UTC
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./modules:/opt/airflow/modules
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
-      - ./output:/opt/airflow/output
-      - ./scripts:/opt/airflow/scripts
+      - ./logs:/opt/airflow/logs
     restart: always
     depends_on:
       - postgres
@@ -87,11 +83,9 @@ services:
       "
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./modules:/opt/airflow/modules
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
-      - ./output:/opt/airflow/output
-      - ./scripts:/opt/airflow/scripts
+      - ./logs:/opt/airflow/logs
     depends_on:
       - postgres
     restart: "no"
