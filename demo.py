@@ -9,18 +9,8 @@ from dataclasses import dataclass
 
 
 
-"""
--- SETUP
+""" SETUP FUNCTIONS """
 
-1. Load env variables
-2. Validate environment variables (AWS + Postgres)
-3. Initialize S3 client 
-
-"""
-
-
-
-# --- SETUP FUNCTIONS ---
 def load_env_variables(SHOW_ENV_VARIABLES=False):
     
     load_dotenv()
@@ -86,7 +76,7 @@ def load_env_variables(SHOW_ENV_VARIABLES=False):
 
 
 
-# --- S3 FUNCTIONS ---
+"""--- S3 FUNCTIONS ---"""
 
 def initialize_s3_client(aws_config):
 
@@ -151,7 +141,8 @@ def download_file_from_s3(s3_client, bucket_name, file_name, local_path):
     except ClientError as e:
         raise RuntimeError(f"[ERROR] - Unable to download file '{file_name}': {e}")
 
-# --- SELECTING DATASET ---
+
+""" --- SELECTING DATASET ---"""
 @dataclass(frozen=True)  # Make the class immutable 
 class PIIDataSet:
     local_path: str
@@ -172,7 +163,10 @@ class PIIDataSet:
             return main_dataset
 
         
-# --- TRANSFORMATION --- 
+
+
+""" --- TRANSFORMATION FUNCTIONS ---""" 
+
 def transform_data(df):
     print("\n>>> Transforming raw data ...")
     
@@ -192,7 +186,8 @@ def transform_data(df):
 
 
 
-# --- DATA VALIDATION ---
+
+""" --- DATA VALIDATION CHECKS ---"""
 
 def validate_data(df, contract_path):
     
@@ -305,11 +300,11 @@ def validate_data(df, contract_path):
 
 
 
-# --- MAIN WORKFLOW --- 
+""" --- MAIN WORKFLOW ---""" 
 
 
 def run_data_pipeline(USE_SAMPLE_DATA=False):
-    
+    # -- SETUP --
     
     # -- 1. Load configs
     aws_config, bucket_config, _ = load_env_variables()
