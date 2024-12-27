@@ -163,6 +163,7 @@ except ClientError as e:
 b2s_contract_path = "01_B2S_DataContract.json"
 
 try:
+    # Load data contract 
     if not os.path.exists(b2s_contract_path):
         raise FileNotFoundError(f"[ERROR] - Data contract '{b2s_contract_path}' not found...")
     
@@ -184,7 +185,20 @@ try:
     print("\n - Starting validation...")
 
 
-    print("------- (Simulating validation process... ) ------ ")
+    # -- Check total row count
+    expected_min_row_count = validation_rules.get('row_count_min', 0)
+    actual_row_count = len(df)
+    if actual_row_count < expected_min_row_count:
+        raise ValueError(f"Row count validation failed. Expected at least {expected_min_row_count} records in the data...")
+    
+    # --- Check total column count 
+    actual_col_count = len(df.columns)
+    expected_col_count = validation_rules.get('column_count', actual_col_count)
+    if actual_col_count != expected_col_count:
+        raise ValueError(f"Column count validation error. Expected '{expected_col_count}' columns but found '{actual_col_count}' instead... ")
+
+     
+
 
 except FileNotFoundError as e:
     print(e)
