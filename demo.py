@@ -196,7 +196,17 @@ try:
     expected_col_count = validation_rules.get('column_count', actual_col_count)
     if actual_col_count != expected_col_count:
         raise ValueError(f"Column count validation error. Expected '{expected_col_count}' columns but found '{actual_col_count}' instead... ")
+    
+    # --- Validate columns and data types
+    for column in schema:
+        col_name = column["name"]
+        col_type = column["type"]
+        constraints = column.get("constraints", {})
 
+        # --- Check if column exists 
+        list_of_column_names = df.columns 
+        if col_name not in list_of_column_names:
+            raise ValueError(f">>> Missing required column: '{col_name}' <<< ")
      
 
 
