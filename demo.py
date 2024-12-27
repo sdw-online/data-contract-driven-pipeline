@@ -165,8 +165,8 @@ class PIIDataSet:
     @staticmethod
     def select_dataset(use_sample: bool):
 
-        main_dataset = PIIDataSet(local_path="pii_dataset.csv", file_name="pii_dataset.csv")
-        sample_dataset = PIIDataSet(local_path="sample_dataset.csv", file_name="sample_dataset.csv")
+        main_dataset = PIIDataSet(local_path="data/raw/pii_dataset.csv", file_name="pii_dataset.csv")
+        sample_dataset = PIIDataSet(local_path="data/raw/sample_dataset.csv", file_name="sample_dataset.csv")
 
         if use_sample:
             print("\nUsing 'sample' dataset for this data workflow...")
@@ -348,11 +348,11 @@ def run_data_pipeline(USE_SAMPLE_DATA=False):
         s3_client,
         bucket_config["BRONZE_BUCKET"],
         selected_dataset.file_name,
-        "bronze_csv_file.csv",
+        "data/raw/bronze_csv_file.csv",
     )
 
     # -- 4. Validate the data 
-    BronzeToSilver_DataContract     =   "01_B2S_DataContract.json" 
+    BronzeToSilver_DataContract     =   "contracts/01_B2S_DataContract.json" 
 
     validate_data(bronze_df, BronzeToSilver_DataContract)
 
@@ -368,11 +368,11 @@ def run_data_pipeline(USE_SAMPLE_DATA=False):
     silver_df = transform_data(bronze_df)
 
     # -- 3. Validate silver data 
-    SilverToGold_DataContract       =   "02_S2G_DataContract.json"
+    SilverToGold_DataContract       =   "contracts/02_S2G_DataContract.json"
     validate_data(silver_df, SilverToGold_DataContract)
 
     # -- 4. Save silver data to S3 bucket 
-    silver_file_name = "silver_layer.csv"
+    silver_file_name = "data/transformed/silver_layer.csv"
     silver_df.to_csv(silver_file_name, index=False)
     upload_file_to_s3(s3_client, silver_file_name, bucket_config["SILVER_BUCKET"], silver_file_name)
 
