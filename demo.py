@@ -215,10 +215,12 @@ try:
         if col_type == "integer" and not pd.api.types.is_integer_dtype(df[col_name]):
             raise TypeError(f">>> Column '{col_name}' should be of type 'integer'... ")
      
+
         # --- Check NULL 
         if constraints.get("not_null") and df[col_name].isnull().any():
             raise ValueError(f"Column '{col_name}' contains NULL values...")
         
+
         # --- Check character count   
         if "max_length" in constraints:
 
@@ -226,8 +228,20 @@ try:
             actual_char_len_of_longest_value    =   df[col_name].apply(lambda x: len(str(x)) if pd.notnull(x) else 0).max()
 
             if actual_char_len_of_longest_value > expected_max_char_length:
-                raise ValueError(f"Column '{col_name}' exceeds the max length of {expected_max_char_length} characters...")
+                raise ValueError(f">>> Column '{col_name}' exceeds the max length of {expected_max_char_length} characters...")
 
+
+        # --- Check minimum value 
+        if "min_value" in constraints:
+            
+            expected_min_value              =   constraints["min_value"]
+            actual_min_value_in_column      =   df[col_name].min()
+
+            if actual_min_value_in_column < expected_min_value:
+                raise ValueError(f">>> Column '{col_name}' has values below the minimum value of '{expected_min_value}' ")
+            
+    
+    print("Data validation passed for BRONZE-TO_SILVER data contract successfully. ")
         
 
 
