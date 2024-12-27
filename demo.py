@@ -350,21 +350,24 @@ def run_data_pipeline(USE_SAMPLE_DATA=False):
 
 
     # --- SILVER LAYER --- 
-    # -- 1. Transform raw data from bronze to silver layer  
+
+    # -- 1. Check if silver bucket exists 
+    check_if_bucket_exists(s3_client, bucket_config["SILVER_BUCKET"], aws_config["AWS_REGION"])
+
+    # -- 2. Transform raw data from bronze to silver layer  
     silver_df = transform_data(bronze_df)
 
-    # -- 2. Validate silver data 
+    # -- 3. Validate silver data 
     SilverToGold_DataContract       =   "02_S2G_DataContract.json"
     validate_data(silver_df, SilverToGold_DataContract)
 
-    # -- 3. Save silver data to S3 bucket 
+    # -- 4. Save silver data to S3 bucket 
     silver_file_name = "silver_layer.csv"
     silver_df.to_csv(silver_file_name, index=False)
     upload_file_to_s3(s3_client, silver_file_name, bucket_config["SILVER_BUCKET"], silver_file_name)
 
     print("Silver layer data uploaded successfully ")
      
-
 
 
 
