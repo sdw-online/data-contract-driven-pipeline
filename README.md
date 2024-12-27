@@ -28,8 +28,8 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
         - If this doesn’t exist, define the validation rules and constraints in the bronze-to-silver (B2S) data contract✅
             - Check the number of rows✅
             - Check the number of columns✅
-    - If validation passes, proceed (write a success message to the console + logs)
-        - Otherwise, circuit break the data pipeline (log and exit)
+    - If validation passes, proceed (write a success message to the console + logs)✅
+        - Otherwise, circuit break the data pipeline (log and exit)✅
 
 - Silver layer
     - Check if silver S3 bucket exists
