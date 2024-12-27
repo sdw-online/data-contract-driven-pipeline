@@ -19,76 +19,134 @@ from dataclasses import dataclass
 """
 
 
-# 1.1. Load environment variables
-load_dotenv()
-
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-AWS_REGION = os.getenv("AWS_REGION")
-BRONZE_BUCKET = os.getenv("BRONZE_BUCKET")
-SILVER_BUCKET = os.getenv("SILVER_BUCKET")
-GOLD_BUCKET = os.getenv("GOLD_BUCKET")
-
-POSTGRES_CONFIG = {
-    "host": os.getenv("POSTGRES_HOST"),
-    "port": os.getenv("POSTGRES_PORT"),
-    "dbname": os.getenv("POSTGRES_DB"),
-    "user": os.getenv("POSTGRES_USER"),
-    "password": os.getenv("POSTGRES_PASSWORD")
-}
+# --- SETUP FUNCTIONS ---
+def load_env_variables(SHOW_ENV_VARIABLES=False):
+    
+    load_dotenv()
 
 
-# -- 1.2. Validate environment variables
+    # Load and validate AWS credentials
+    aws_config = {
+        "AWS_ACCESS_KEY":   os.getenv("AWS_ACCESS_KEY"),
+        "AWS_SECRET_KEY":   os.getenv("AWS_SECRET_KEY"),
+        "AWS_REGION":       os.getenv("AWS_REGION"),
+    }
 
-
-# Display the environment variables
-SHOW_ENV_VARIABLES = False
-
-if SHOW_ENV_VARIABLES:
-    print("Showing env variables:\n")
-    print(f"AWS Access key:     {AWS_ACCESS_KEY}")
-    print(f"AWS Secret Key:     {AWS_SECRET_KEY}")
-    print(f"AWS Region:         {AWS_REGION}")
-    print(f"Bronze Bucket:      {BRONZE_BUCKET}")
-    print(f"Silver bucket:      {SILVER_BUCKET}")
-    print(f"Gold Bucket:        {GOLD_BUCKET}")
-    print(f"Postgres Config:    {POSTGRES_CONFIG}")
-else:
-    print("Setting up environment...")
+    for key, value in aws_config.items():
+        if not value:
+            raise ValueError(f"[ERROR] - Missing required AWS environment variable: {key}")
 
 
 
-# Validate AWS credentials for S3 setup
-if not AWS_ACCESS_KEY or not AWS_SECRET_KEY or not AWS_REGION:
-    raise ValueError(f"[ERROR] - Missing at least one AWS credential in .env file...")
+    # Load S3 bucket names
+    bucket_config = {
+        "BRONZE_BUCKET":    os.getenv("BRONZE_BUCKET"),
+        "SILVER_BUCKET":    os.getenv("SILVER_BUCKET"),
+        "GOLD_BUCKET":      os.getenv("GOLD_BUCKET"),
+    }
+
+    for key, value in bucket_config.items():
+        if not value:
+            raise ValueError(f"[ERROR] - Missing required bucket name: {key}")
 
 
 
-# Check if all variables for Postgres connection are present
-for key, value in POSTGRES_CONFIG.items():
-    if not value:
-        raise ValueError(f"[ERROR] - Missing at least one Postgres credential for key: {key}")
+    # Load Postgres config
+    postgres_config = {
+        "host":         os.getenv("POSTGRES_HOST"),
+        "port":         os.getenv("POSTGRES_PORT"),
+        "dbname":       os.getenv("POSTGRES_DB"),
+        "user":         os.getenv("POSTGRES_USER"),
+        "password":     os.getenv("POSTGRES_PASSWORD"),
+    }
 
 
+    for key, value in postgres_config.items():
+        if not value:
+            raise ValueError(f"[ERROR] - Missing required Postgres config: {key}")
+    
+    # Display the environment variables
+    if SHOW_ENV_VARIABLES:
+        print("Showing env variables:\n")
+        print(f"AWS Access key:     {aws_config["AWS_ACCESS_KEY"]}")
+        print(f"AWS Secret Key:     {aws_config["AWS_SECRET_KEY"]}")
+        print(f"AWS Region:         {aws_config["AWS_REGION"]}")
+        print(f"Bronze Bucket:      {bucket_config["BRONZE_BUCKET"]}")
+        print(f"Silver bucket:      {bucket_config["SILVER_BUCKET"]}")
+        print(f"Gold Bucket:        {bucket_config["GOLD_BUCKET"]}")
+        print(f"Postgres Config:    {postgres_config}")
+    else:
+        print("Setting up environment...")
 
-
-# 1.3. Initialize S3 client 
-
-try:
-    s3_client = boto3.client(
-        "s3",
-        aws_access_key_id=AWS_ACCESS_KEY,
-        aws_secret_access_key=AWS_SECRET_KEY,
-        region_name=AWS_REGION
-    )
-    print("[INFO] - S3 client initialized successfully")
-except ClientError as e:
-    print(f"[ERROR] - Failed to initialize S3 client: {e}")
-    raise
+    return aws_config, bucket_config, postgres_config
 
 
 
 
+
+
+# --- S3 FUNCTIONS ---
+
+def initialize_s3_client(aws_config):
+
+    try:
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=aws_config["AWS_ACCESS_KEY"],
+            aws_secret_access_key=aws_config["AWS_SECRET_KEY"],
+            region_name=aws_config["AWS_REGION"]
+        )
+        print("[INFO] - S3 client initialized successfully")
+
+    except ClientError as e:
+        print(f"[ERROR] - Failed to initialize S3 client: {e}")
+        raise
+
+
+
+def check_if_bucket_exists(s3_client, bucket_name, region):
+    try:
+        
+        existing_buckets = [
+            bucket["Name"] for bucket in s3_client.list_buckets().get("Buckets", [])
+        ]
+
+        if bucket_name not in existing_buckets:
+            s3_client.create_bucket(
+                Bucket=bucket_name,
+                CreateBucketConfiguration={"LocationConstraint": region},
+            )
+            print(f"[INFO] - Bucket '{bucket_name}' created successfully.")
+
+        else:
+            print(f"[INFO] - Bucket '{bucket_name}' already exists.")
+    
+    except ClientError as e:
+        raise RuntimeError(f"[ERROR] - Unable to create/check bucket '{bucket_name}': {e}")
+
+
+
+
+def upload_file_to_s3(s3_client, file_path, bucket_name, file_name):
+    try:
+        
+        s3_client.upload_file(file_path, bucket_name, file_name)
+        print(f" File '{file_name}' uploaded successfully to bucket '{bucket_name}'.")
+    
+    except ClientError as e:
+        raise RuntimeError(f"[ERROR] - Unable to upload file '{file_name}': {e}")
+
+
+def download_file_from_s3(s3_client, bucket_name, file_name, local_path):
+    try:
+        
+        s3_client.download_file(bucket_name, file_name, local_path)
+        print(f"File '{file_name}' downloaded successfully to '{local_path}'.")
+
+        return pd.read_csv(local_path)
+    
+    except ClientError as e:
+        raise RuntimeError(f"[ERROR] - Unable to download file '{file_name}': {e}")
 
 """
 
@@ -264,15 +322,6 @@ try:
     
     print("Data validation passed for BRONZE-TO_SILVER data contract successfully. ")
         
-
-
-except FileNotFoundError as e:
-    print(e)
-    raise
-
-except ValueError as e:
-    print(f"[ERROR] - Data validation failed: {e} ")
-    raise
 
 except Exception as e:
     print(f"[ERROR] - Unexpected error during validation: {e}") 
