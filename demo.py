@@ -207,6 +207,13 @@ try:
         list_of_column_names = df.columns 
         if col_name not in list_of_column_names:
             raise ValueError(f">>> Missing required column: '{col_name}' <<< ")
+
+        # --- Check data types
+        if col_type == "string" and not pd.api.types.is_string_dtype(df[col_name]):
+            raise TypeError(f">>> Column '{col_name}' should be of type 'string'... ")
+        
+        if col_type == "integer" and not pd.api.types.is_integer_dtype(df[col_name]):
+            raise TypeError(f">>> Column '{col_name}' should be of type 'integer'... ")
      
 
 
