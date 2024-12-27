@@ -215,9 +215,21 @@ try:
         if col_type == "integer" and not pd.api.types.is_integer_dtype(df[col_name]):
             raise TypeError(f">>> Column '{col_name}' should be of type 'integer'... ")
      
-        # --- Check constraints 
+        # --- Check NULL 
         if constraints.get("not_null") and df[col_name].isnull().any():
             raise ValueError(f"Column '{col_name}' contains NULL values...")
+        
+        # --- Check character count   
+        if "max_length" in constraints:
+
+            expected_max_char_length            =   constraints["max_length"]
+            actual_char_len_of_longest_value    =   df[col_name].apply(lambda x: len(str(x)) if pd.notnull(x) else 0).max()
+
+            if actual_char_len_of_longest_value > expected_max_char_length:
+                raise ValueError(f"Column '{col_name}' exceeds the max length of {expected_max_char_length} characters...")
+
+        
+
 
 except FileNotFoundError as e:
     print(e)
