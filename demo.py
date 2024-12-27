@@ -5,7 +5,7 @@ import pandas as pd
 import json
 import boto3
 from botocore.exceptions import ClientError
-
+from dataclasses import dataclass
 
 
 
@@ -125,9 +125,20 @@ except ClientError as e:
 
 
 # 2.2. Upload source CSV file
+@dataclass(frozen=True)  # Make the class immutable 
+class PIIDataSet:
+    local_path: str
+    file_name: str
 
-local_source_file_path = "pii_dataset.csv"
-file_name = "pii_dataset.csv"
+main_dataset    =   PIIDataSet(local_path="pii_dataset.csv", file_name="pii_dataset.csv")
+sample_dataset  =   PIIDataSet(local_path="sample_dataset.csv", file_name="sample_dataset.csv")
+
+USE_SAMPLE_DATA         =   False
+selected_dataset        =   sample_dataset if USE_SAMPLE_DATA else main_dataset
+file_name               =   selected_dataset.file_name
+local_source_file_path  =   selected_dataset.local_path
+
+
 
 try:
     response = s3_client.list_objects_v2(Bucket=BRONZE_BUCKET)
