@@ -133,10 +133,20 @@ class PIIDataSet:
 main_dataset    =   PIIDataSet(local_path="pii_dataset.csv", file_name="pii_dataset.csv")
 sample_dataset  =   PIIDataSet(local_path="sample_dataset.csv", file_name="sample_dataset.csv")
 
-USE_SAMPLE_DATA         =   False
-selected_dataset        =   sample_dataset if USE_SAMPLE_DATA else main_dataset
+USE_SAMPLE_DATA         =   True
+
+if USE_SAMPLE_DATA:
+    print(f"\nUsing 'sample' dataset for this data workflow... ")
+    selected_dataset = sample_dataset
+else:
+    print(f"\nUsing 'main' dataset for this data workflow... ")
+    selected_dataset = main_dataset
+
 file_name               =   selected_dataset.file_name
 local_source_file_path  =   selected_dataset.local_path
+
+print(f"File name: {file_name}")
+print(f"File path: {local_source_file_path}")
 
 
 
