@@ -215,7 +215,9 @@ try:
         if col_type == "integer" and not pd.api.types.is_integer_dtype(df[col_name]):
             raise TypeError(f">>> Column '{col_name}' should be of type 'integer'... ")
      
-
+        # --- Check constraints 
+        if constraints.get("not_null") and df[col_name].isnull().any():
+            raise ValueError(f"Column '{col_name}' contains NULL values...")
 
 except FileNotFoundError as e:
     print(e)
