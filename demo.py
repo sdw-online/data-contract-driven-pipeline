@@ -155,3 +155,44 @@ try:
     print(df.head())
 except ClientError as e:
     print(f"[ERROR] - Unable to read CSV data from '{BRONZE_BUCKET}' bucket into pandas df: {e}")
+
+
+
+# 2.4. Validate data against the contract expectations 
+
+b2s_contract_path = "01_B2S_DataContract.json"
+
+try:
+    if not os.path.exists(b2s_contract_path):
+        raise FileNotFoundError(f"[ERROR] - Data contract '{b2s_contract_path}' not found...")
+    
+    with open(b2s_contract_path, "r") as contract_file:
+        b2s_contract = json.load(contract_file)
+
+    # Display the contract expectations in the console 
+    print("\n --- Loading the BRONZE-TO-SILVER data contract...:")
+    print(json.dumps(b2s_contract, indent=4))
+    print("\nValidating the contract against the following expectations:")
+
+    schema = b2s_contract["schema"]["columns"]
+    for col in schema:
+        print(f" - Column '{col['name']}': Type = {col['type']}, Constraints: {col.get('constraints', 'None')}")
+
+    validation_rules = b2s_contract["validation_rules"]
+    print(f"\n - Min row count: {validation_rules.get('row_count_min', 'Not specified')}")
+
+    print("\n - Starting validation...")
+
+
+    print("------- (Simulating validation process... ) ------ ")
+
+except FileNotFoundError as e:
+    print(e)
+    raise
+
+except ValueError as e:
+    print(f"[ERROR] - Data validation failed: {e} ")
+    raise
+
+except Exception as e:
+    print(f"[ERROR] - Unexpected error during validation: {e}") 

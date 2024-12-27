@@ -1,0 +1,16 @@
+{
+    "contract_name": "01_B2S_DataContract",
+    "version": "1.0",
+    "schema": {
+        "columns": [
+            {"name": "document", "type": "string", "constraints": {"not_null": true}},
+            {"name": "name", "type": "string", "constraints": {"not_null": true, "max_length": 100 }},
+            {"name": "email", "type": "string"},
+            {"name": "phone", "type": "string"},
+            {"name": "len", "type": "integer", "constraints": {"min_value": 1}}
+        ]
+    },
+    "validation_rules": {
+        "row_count_min": 1
+    }
+}
