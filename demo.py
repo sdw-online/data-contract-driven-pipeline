@@ -142,6 +142,20 @@ def download_file_from_s3(s3_client, bucket_name, file_name, local_path):
         raise RuntimeError(f"[ERROR] - Unable to download file '{file_name}': {e}")
 
 
+""" ---POSTGRES FUNCTIONS --- """
+
+def test_postgres_connection(postgres_config):
+    try:
+        print(">>> Attempting to connect to Postgres...")
+        postgres_connection = psycopg2.connect(**postgres_config)
+        postgres_connection.close()
+
+        print("Connected to Postgres successfully")
+    except Exception as e:
+        print(f"[ERROR] - Failed to connect to PostgreSQL: {e} ")
+
+
+
 """ --- SELECTING DATASET ---"""
 @dataclass(frozen=True)  # Make the class immutable 
 class PIIDataSet:
@@ -302,17 +316,18 @@ def validate_data(df, contract_path):
 
 """ --- MAIN WORKFLOW ---""" 
 
-
 def run_data_pipeline(USE_SAMPLE_DATA=False):
     # -- SETUP --
     
     # -- 1. Load configs
-    aws_config, bucket_config, _ = load_env_variables()
+    aws_config, bucket_config, postgres_config = load_env_variables()
 
 
     # -- 2. Initialize S3 buckets 
     s3_client = initialize_s3_client(aws_config)
 
+    # -- 3. Test connection to Postgres
+    test_postgres_connection(postgres_config)
 
     # --- BRONZE LAYER ---
 
@@ -361,7 +376,7 @@ def run_data_pipeline(USE_SAMPLE_DATA=False):
     silver_df.to_csv(silver_file_name, index=False)
     upload_file_to_s3(s3_client, silver_file_name, bucket_config["SILVER_BUCKET"], silver_file_name)
 
-    print("Silver layer data uploaded successfully ")
+    print("Transformed data uploaded successfully to silver bucket")
      
 
 

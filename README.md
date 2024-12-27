@@ -32,16 +32,16 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
         - Otherwise, circuit break the data pipeline (log and exit)✅
 
 - Silver layer
-    - Check if silver S3 bucket exists
-        - If not, create it
-    - Read the raw data from the bronze bucket into a Pandas dataframe
-        - If data doesn’t exist, re-run the bronze layer’s task
-    - Apply necessary transformations (e.g. joins, filter, aggregations, renaming columns)
-    - Write the transformed data into the silver bucket
-    - Validate the transformed data against the silver-to-gold (S2G) data contract
-        - If this doesn’t exist, define the validation rules and constraints in the silver-to-gold (S2G) data contract
-        - Write a success message (to the console/logs) if validation passes
-            - Otherwise, circuit break
+    - Check if silver S3 bucket exists✅
+        - If not, create it✅
+    - Read the raw data from the bronze bucket into a Pandas dataframe✅
+        - If data doesn’t exist, re-run the bronze layer’s task✅
+    - Apply necessary transformations (e.g. joins, filter, aggregations, renaming columns)✅
+    - Write the transformed data into the silver bucket✅
+    - Validate the transformed data against the silver-to-gold (S2G) data contract✅
+        - If this doesn’t exist, define the validation rules and constraints in the silver-to-gold (S2G) data contract✅
+        - Write a success message (to the console/logs) if validation passes✅
+            - Otherwise, circuit break✅
 
 - Gold layer
     - Check if gold bucket exists
