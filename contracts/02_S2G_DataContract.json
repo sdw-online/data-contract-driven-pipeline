@@ -12,6 +12,6 @@
     },
     "validation_rules": {
         "row_count_min": 1,
-        "column_count": 6
+        "column_count": 5
     }
 }

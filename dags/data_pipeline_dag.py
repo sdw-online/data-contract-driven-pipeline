@@ -187,18 +187,18 @@ def transform_data(df):
     print("\n>>> Transforming raw data ...")
     
     # Extract + transform relevant columns
-    silver_df = df[["document", "name", "email", "phone", "len"]]
-    silver_df = silver_df.copy()
+    required_columns = ["document", "name", "email", "phone", "len"]
+    df = df[required_columns]
     
     # Remove whitespace from name column
-    silver_df["name"] = silver_df["name"].str.strip()
+    df["name"] = df["name"].str.strip()
 
     # Convert email characters to lowercase 
-    silver_df["email"] = silver_df["email"].str.lower()
+    df["email"] = df["email"].str.lower()
 
     print("Transformation in Silver layer completed successfully")
 
-    return silver_df
+    return df
 
 
 
@@ -413,7 +413,7 @@ with DAG(
         # Validate the downloaded Bronze dataset
         print(f"Validating silver data with S2G data contract...")
         SilverToGoldDataContract = "contracts/02_S2G_DataContract.json"
-        validate_data(bronze_df, SilverToGoldDataContract)
+        validate_data(silver_df, SilverToGoldDataContract)
         print(f"Silver data validation passed successfully ")
 
         # Convert transformed data to CSV
