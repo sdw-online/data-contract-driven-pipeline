@@ -346,18 +346,18 @@ with DAG(
 
     # Task 3: Upload dataset to Bronze layer
     def process_bronze_layer():
-        aws_config, bucket_config, _ = load_env_variables()
-        s3_client = initialize_s3_client(aws_config)
+        aws_config, bucket_config, postgres_config = load_env_variables()
+        s3_client       =   initialize_s3_client(aws_config)
 
-        BRONZE_BUCKET = bucket_config["BRONZE_BUCKET"]
-        AWS_REGION = aws_config["AWS_REGION"]
+        BRONZE_BUCKET   =   bucket_config["BRONZE_BUCKET"]
+        AWS_REGION      =   aws_config["AWS_REGION"]
 
         print(f"Checking if bronze bucket '{BRONZE_BUCKET}' exists... ")
         check_if_bucket_exists(s3_client, BRONZE_BUCKET, AWS_REGION)
 
         # Resolve the full path to the dataset file inside the container
-        dataset = PIIDataSet.select_dataset(use_sample=False)
-        file_path = f"/opt/airflow/{dataset.local_path}"
+        dataset     =   PIIDataSet.select_dataset(use_sample=False)
+        file_path   =   f"/opt/airflow/{dataset.local_path}"
 
         # Log the resolved file path
         print(f"[INFO] - Resolved dataset file path: {file_path}")
@@ -366,6 +366,17 @@ with DAG(
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"[ERROR] - Dataset file not found: {file_path}")
 
+        # Read raw data from bronze S3 bucket
+        print(f"Reading raw data from '{file_path}'... ")
+        bronze_df = pd.read_csv(file_path)
+
+        # Validate against the B2S data contract
+        print(f"Validating bronze data with B2S data contract...")
+        BronzeToSilverDataContract = "contracts/01_B2S_DataContract.json"
+        validate_data(bronze_df, BronzeToSilverDataContract)
+        print(f"Bronze data validation passed successfully ")
+
+
         # Upload the dataset file to the Bronze bucket in S3
         upload_file_to_s3(s3_client, file_path, bucket_config["BRONZE_BUCKET"], dataset.file_name)
 
@@ -373,6 +384,8 @@ with DAG(
         task_id="process_bronze_layer",
         python_callable=process_bronze_layer,
     )
+
+
 
     # Task 4: Transform and upload dataset to Silver layer
     def process_silver_layer():
@@ -391,11 +404,18 @@ with DAG(
             s3_client, bucket_config["BRONZE_BUCKET"], "pii_dataset.csv", local_bronze_path
         )
 
-        # Validate the downloaded Bronze dataset
-        validate_data(bronze_df, "contracts/01_B2S_DataContract.json")
 
-        # Transform the Bronze dataset into Silver
-        silver_df = transform_data(bronze_df)
+        # Transform the raw data
+        print(f"Transforming the raw data from bronze to silver ... ")
+        silver_df = transform_data(bronze_df) 
+
+        # Validate the downloaded Bronze dataset
+        print(f"Validating silver data with S2G data contract...")
+        SilverToGoldDataContract = "contracts/02_SilverToGold_DataContract.json"
+        validate_data(bronze_df, SilverToGoldDataContract)
+        print(f"Silver data validation passed successfully ")
+
+        # Convert transformed data to CSV
         local_silver_path = f"/opt/airflow/data/transformed/silver_layer.csv"
         silver_df.to_csv(local_silver_path, index=False)
 
