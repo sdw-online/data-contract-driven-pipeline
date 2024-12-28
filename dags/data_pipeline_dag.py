@@ -378,7 +378,12 @@ with DAG(
     def process_silver_layer():
         aws_config, bucket_config, postgres_config = load_env_variables()
         s3_client = initialize_s3_client(aws_config)
+        SILVER_BUCKET = bucket_config["SILVER_BUCKET"]
+        AWS_REGION = aws_config["AWS_REGION"]
 
+        print(f"Checking if bucket '{SILVER_BUCKET}' exists... ")
+        check_if_bucket_exists(s3_client, SILVER_BUCKET, AWS_REGION)
+        
         # Download the Bronze dataset file from S3 to a local path
         bronze_file = "bronze_csv_file.csv"
         local_bronze_path = f"/opt/airflow/data/raw/{bronze_file}"
