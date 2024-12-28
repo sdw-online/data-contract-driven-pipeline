@@ -348,8 +348,20 @@ with DAG(
     def process_bronze_layer():
         aws_config, bucket_config, _ = load_env_variables()
         s3_client = initialize_s3_client(aws_config)
+
+        # Resolve the full path to the dataset file inside the container
         dataset = PIIDataSet.select_dataset(use_sample=False)
-        upload_file_to_s3(s3_client, bucket_config["BRONZE_BUCKET"], dataset.local_path, dataset.file_name)
+        file_path = f"/opt/airflow/{dataset.local_path}"
+
+        # Log the resolved file path
+        print(f"[INFO] - Resolved dataset file path: {file_path}")
+
+        # Check if the file exists before uploading
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"[ERROR] - Dataset file not found: {file_path}")
+
+        # Upload the dataset file to the Bronze bucket in S3
+        upload_file_to_s3(s3_client, file_path, bucket_config["BRONZE_BUCKET"], dataset.file_name)
 
     process_bronze_layer_task = PythonOperator(
         task_id="process_bronze_layer",
@@ -358,17 +370,26 @@ with DAG(
 
     # Task 4: Transform and upload dataset to Silver layer
     def process_silver_layer():
-        aws_config, bucket_config, _ = load_env_variables()
+        aws_config, bucket_config, postgres_config = load_env_variables()
         s3_client = initialize_s3_client(aws_config)
+
+        # Download the Bronze dataset file from S3 to a local path
         bronze_file = "bronze_csv_file.csv"
+        local_bronze_path = f"/opt/airflow/data/raw/{bronze_file}"
         bronze_df = download_file_from_s3(
-            s3_client, bucket_config["BRONZE_BUCKET"], "pii_dataset.csv", f"data/raw/{bronze_file}"
+            s3_client, bucket_config["BRONZE_BUCKET"], "pii_dataset.csv", local_bronze_path
         )
-        validate_data(bronze_df)
+
+        # Validate the downloaded Bronze dataset
+        validate_data(bronze_df, "contracts/01_B2S_DataContract.json")
+
+        # Transform the Bronze dataset into Silver
         silver_df = transform_data(bronze_df)
-        silver_file = "data/transformed/silver_layer.csv"
-        silver_df.to_csv(silver_file, index=False)
-        upload_file_to_s3(s3_client, bucket_config["SILVER_BUCKET"], silver_file, "silver_layer.csv")
+        local_silver_path = f"/opt/airflow/data/transformed/silver_layer.csv"
+        silver_df.to_csv(local_silver_path, index=False)
+
+        # Upload the transformed Silver dataset to the Silver bucket in S3
+        upload_file_to_s3(s3_client, local_silver_path, bucket_config["SILVER_BUCKET"], "silver_layer.csv")
 
     process_silver_layer_task = PythonOperator(
         task_id="process_silver_layer",
