@@ -211,12 +211,13 @@ def validate_data(df, contract_path):
         raise FileNotFoundError(f"[ERROR] - Data contract '{contract_path}' not found.")
 
     with open(contract_path, "r") as file:
+        print(f"Contract path: {contract_path}")
         contract = json.load(file)
 
-    contract_name = contract.get("contract_name", "")
-    validation_rules = contract.get("validation_rules", {})
-    schema = contract.get("schema", {})
-    expected_columns = schema.get("columns", [])
+    contract_name       = contract.get("contract_name", "")
+    validation_rules    = contract.get("validation_rules", {})
+    schema              = contract.get("schema", {})
+    expected_columns    = schema.get("columns", [])
 
     # Bronze-to-Silver: data validation (structural)
     if "BronzeToSilver" in contract_name:
@@ -411,7 +412,7 @@ with DAG(
 
         # Validate the downloaded Bronze dataset
         print(f"Validating silver data with S2G data contract...")
-        SilverToGoldDataContract = "contracts/02_SilverToGold_DataContract.json"
+        SilverToGoldDataContract = "contracts/02_S2G_DataContract.json"
         validate_data(bronze_df, SilverToGoldDataContract)
         print(f"Silver data validation passed successfully ")
 
