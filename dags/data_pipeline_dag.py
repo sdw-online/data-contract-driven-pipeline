@@ -3,6 +3,7 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import os
 import psycopg2
+from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 import pandas as pd
 import json
@@ -156,6 +157,83 @@ def test_postgres_connection(postgres_config):
     except Exception as e:
         print(f"[ERROR] - Failed to connect to PostgreSQL: {e} ")
 
+def check_if_postgres_objects_exist(postgres_config):
+    """
+    Check if the database, schema, and table exist in Postgres. 
+    Create them if they don't.
+    """
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS gold_dataset (
+        document TEXT NOT NULL,
+        name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT,
+        len INT
+    );
+    """
+
+    try:
+        conn = psycopg2.connect(**postgres_config)
+        cursor = conn.cursor()
+        cursor.execute(create_table_query)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("[INFO] - Postgres objects verified or created successfully.")
+    except Exception as e:
+        raise RuntimeError(f"[ERROR] - Unable to verify or create Postgres objects: {e}")
+
+
+def load_data_into_postgres(postgres_config, df):
+    """
+    Load the DataFrame into the Postgres table.
+    """
+    insert_query = """
+    INSERT INTO gold_dataset (document, name, email, phone, len)
+    VALUES %s
+    """
+    try:
+        conn = psycopg2.connect(**postgres_config)
+        cursor = conn.cursor()
+        # Use `execute_values` for batch inserts
+        execute_values(cursor, insert_query, df.values.tolist())
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("[INFO] - Data successfully loaded into Postgres.")
+    except Exception as e:
+        raise RuntimeError(f"[ERROR] - Failed to load data into Postgres: {e}")
+
+
+def validate_postgres_load(postgres_config, expected_row_count, expected_columns):
+    """
+    Validate the data load in Postgres by performing row and column checks.
+    """
+    validation_query = "SELECT * FROM gold_dataset;"
+    try:
+        conn = psycopg2.connect(**postgres_config)
+        cursor = conn.cursor()
+        cursor.execute(validation_query)
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        cursor.close()
+        conn.close()
+
+        # Validate row count
+        if len(rows) != expected_row_count:
+            raise ValueError(
+                f"[ERROR] - Row count mismatch in Postgres: Expected {expected_row_count}, Found {len(rows)}"
+            )
+
+        # Validate column names
+        if columns != expected_columns:
+            raise ValueError(
+                f"[ERROR] - Column mismatch in Postgres: Expected {expected_columns}, Found {columns}"
+            )
+
+        print("[INFO] - Postgres validation passed successfully.")
+    except Exception as e:
+        raise RuntimeError(f"[ERROR] - Postgres validation failed: {e}")
 
 
 """ --- SELECTING DATASET ---"""
@@ -336,18 +414,20 @@ with DAG(
     )
 
     # Task 2: Test Postgres connection
-    # def test_postgres_task():
-    #     _, _, postgres_config = load_env_variables()
-    #     test_postgres_connection(postgres_config)
+    def test_postgres_task():
+        _not_needed_1, _not_needed_2, postgres_config = load_env_variables()
+        test_postgres_connection(postgres_config)
 
-    # test_postgres_task = PythonOperator(
-    #     task_id="test_postgres_connection",
-    #     python_callable=test_postgres_task,
-    # )
+
+
+    test_postgres_task = PythonOperator(
+        task_id="test_postgres_connection",
+        python_callable=test_postgres_task,
+    )
 
     # Task 3: Upload dataset to Bronze layer
-    def process_bronze_layer():
-        aws_config, bucket_config, postgres_config = load_env_variables()
+    def run_bronze_layer():
+        aws_config, bucket_config, _not_needed = load_env_variables()
         s3_client       =   initialize_s3_client(aws_config)
 
         BRONZE_BUCKET   =   bucket_config["BRONZE_BUCKET"]
@@ -381,16 +461,16 @@ with DAG(
         # Upload the dataset file to the Bronze bucket in S3
         upload_file_to_s3(s3_client, file_path, bucket_config["BRONZE_BUCKET"], dataset.file_name)
 
-    process_bronze_layer_task = PythonOperator(
-        task_id="process_bronze_layer",
-        python_callable=process_bronze_layer,
+    run_bronze_layer_task = PythonOperator(
+        task_id="run_bronze_layer",
+        python_callable=run_bronze_layer,
     )
 
 
 
     # Task 4: Transform and upload dataset to Silver layer
-    def process_silver_layer():
-        aws_config, bucket_config, postgres_config = load_env_variables()
+    def run_silver_layer():
+        aws_config, bucket_config, _not_needed = load_env_variables()
         s3_client = initialize_s3_client(aws_config)
         SILVER_BUCKET = bucket_config["SILVER_BUCKET"]
         AWS_REGION = aws_config["AWS_REGION"]
@@ -423,21 +503,56 @@ with DAG(
         # Upload the transformed Silver dataset to the Silver bucket in S3
         upload_file_to_s3(s3_client, local_silver_path, bucket_config["SILVER_BUCKET"], "silver_layer.csv")
 
-    process_silver_layer_task = PythonOperator(
-        task_id="process_silver_layer",
-        python_callable=process_silver_layer,
+    run_silver_layer_task = PythonOperator(
+        task_id="run_silver_layer",
+        python_callable=run_silver_layer,
     )
 
 
 
-def process_gold_layer():
-    pass 
+    def run_gold_layer():
+        aws_config, bucket_config, postgres_config = load_env_variables()
+        s3_client = initialize_s3_client(aws_config)
+        GOLD_BUCKET = bucket_config["GOLD_BUCKET"]
+        AWS_REGION = aws_config["AWS_REGION"]
 
-process_gold_layer_task = PythonOperator(
-    task_id="process_gold_layer",
-    python_callable=process_gold_layer
-)
+        # Check if Gold S3 bucket exists
+        print(f"Checking if bucket '{GOLD_BUCKET}' exists...")
+        check_if_bucket_exists(s3_client, GOLD_BUCKET, AWS_REGION)
+
+        # Download Silver dataset from S3 to local path
+        silver_file = "silver_layer.csv"
+        local_silver_path = f"/opt/airflow/data/transformed/{silver_file}"
+        silver_df = download_file_from_s3(
+            s3_client, bucket_config["SILVER_BUCKET"], silver_file, local_silver_path
+        )
+
+        print("Silver dataset successfully loaded into df.")
+
+        # Ensure Postgres target objects exist
+        print("Ensuring Postgres objects exist...")
+        check_if_postgres_objects_exist(postgres_config)
+
+        # Load data into Postgres
+        print("Loading data into Postgres...")
+        load_data_into_postgres(postgres_config, silver_df)
+
+        # Validate data in Postgres
+        print("Validating data in Postgres...")
+        validate_postgres_load(
+            postgres_config,
+            expected_row_count=len(silver_df),
+            expected_columns=["document", "name", "email", "phone", "len"],
+        )
+
+        print("Gold layer process completed successfully.")
+
+
+    run_gold_layer_task = PythonOperator(
+            task_id="run_gold_layer",
+            python_callable=run_gold_layer
+        )
 
     # Task dependencies
-    load_env_task >> process_bronze_layer_task >> process_silver_layer_task >> process_gold_layer
-    # load_env_task >> test_postgres_task >> process_bronze_layer_task >> process_silver_layer_task
+    # load_env_task >> run_bronze_layer_task >> run_silver_layer_task >> run_gold_layer_task
+    load_env_task >> test_postgres_task >> run_bronze_layer_task >> run_silver_layer_task >> run_gold_layer_task
