@@ -428,6 +428,16 @@ with DAG(
         python_callable=process_silver_layer,
     )
 
+
+
+def process_gold_layer():
+    pass 
+
+process_gold_layer_task = PythonOperator(
+    task_id="process_gold_layer",
+    python_callable=process_gold_layer
+)
+
     # Task dependencies
-    load_env_task >> process_bronze_layer_task >> process_silver_layer_task
+    load_env_task >> process_bronze_layer_task >> process_silver_layer_task >> process_gold_layer
     # load_env_task >> test_postgres_task >> process_bronze_layer_task >> process_silver_layer_task
