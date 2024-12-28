@@ -349,6 +349,12 @@ with DAG(
         aws_config, bucket_config, _ = load_env_variables()
         s3_client = initialize_s3_client(aws_config)
 
+        BRONZE_BUCKET = bucket_config["BRONZE_BUCKET"]
+        AWS_REGION = aws_config["AWS_REGION"]
+
+        print(f"Checking if bronze bucket '{BRONZE_BUCKET}' exists... ")
+        check_if_bucket_exists(s3_client, BRONZE_BUCKET, AWS_REGION)
+
         # Resolve the full path to the dataset file inside the container
         dataset = PIIDataSet.select_dataset(use_sample=False)
         file_path = f"/opt/airflow/{dataset.local_path}"
