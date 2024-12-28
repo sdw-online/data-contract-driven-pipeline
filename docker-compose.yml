@@ -3,6 +3,7 @@ version: "3.8"
 services:
   postgres:
     image: postgres:13
+    container_name: postgres
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -11,13 +12,13 @@ services:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     ports:
-      - "5434:5432"
+      - "5432:5432"
     restart: always
     networks:
       - app-network
 
   airflow-webserver:
-    image: custom-airflow:latest
+    image: apache/airflow:2.7.0
     container_name: airflow-webserver
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
@@ -26,15 +27,18 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__WEBSERVER__SECRET_KEY: "D6GEME7iEc8fld5pepDyh8JNBWFrbQAHMS2P7vc4kXcWYhNV964hWbXy3z952LwRN2Bnx4g8fAqmIiLzNXJhYQ"
-      AIRFLOW__LOGGING__HOSTNAME_CALLABLE: "socket.gethostname"
+      PYTHONPATH: "/opt/airflow/modules"
       TZ: UTC
     ports:
       - "8080:8080"
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./modules:/opt/airflow/modules
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
-      - ./logs:/opt/airflow/logs
+      - ./output:/opt/airflow/output
+      - ./scripts:/opt/airflow/scripts
+      - ./.env:/opt/airflow/.env
     restart: always
     depends_on:
       - postgres
@@ -44,7 +48,7 @@ services:
       - app-network
 
   airflow-scheduler:
-    image: custom-airflow:latest
+    image: apache/airflow:2.7.0
     container_name: airflow-scheduler
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
@@ -53,13 +57,16 @@ services:
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__SECRET_KEY: "D6GEME7iEc8fld5pepDyh8JNBWFrbQAHMS2P7vc4kXcWYhNV964hWbXy3z952LwRN2Bnx4g8fAqmIiLzNXJhYQ"
-      AIRFLOW__LOGGING__HOSTNAME_CALLABLE: "socket.gethostname"
+      PYTHONPATH: "/opt/airflow/modules"
       TZ: UTC
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./modules:/opt/airflow/modules
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
-      - ./logs:/opt/airflow/logs
+      - ./output:/opt/airflow/output
+      - ./scripts:/opt/airflow/scripts
+      - ./.env:/opt/airflow/.env
     restart: always
     depends_on:
       - postgres
@@ -69,12 +76,11 @@ services:
       - app-network
 
   airflow-init:
-    image: custom-airflow:latest
+    image: apache/airflow:2.7.0
     container_name: airflow-init
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/prod_db
       AIRFLOW__WEBSERVER__SECRET_KEY: "D6GEME7iEc8fld5pepDyh8JNBWFrbQAHMS2P7vc4kXcWYhNV964hWbXy3z952LwRN2Bnx4g8fAqmIiLzNXJhYQ"
-      AIRFLOW__LOGGING__HOSTNAME_CALLABLE: "socket.gethostname"
       TZ: UTC
     entrypoint: >
       sh -c "
@@ -83,9 +89,12 @@ services:
       "
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./modules:/opt/airflow/modules
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
-      - ./logs:/opt/airflow/logs
+      - ./output:/opt/airflow/output
+      - ./scripts:/opt/airflow/scripts
+      - ./.env:/opt/airflow/.env
     depends_on:
       - postgres
     restart: "no"
