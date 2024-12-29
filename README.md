@@ -169,7 +169,7 @@ Cause: I added a fake_column, which increased the column count from 16 to 17
 ##### Test 4.2. Silver_To_Gold contract
 
 -- Did this test return the expected outcomes (Y/N)?
-EXPECTED_RESULTS_IN_TEST = ""
+EXPECTED_RESULTS_IN_TEST = "Y"
 
 Error message returned: "([ERROR] - Column 'name' exceeds allowed max length of 100, which is '194' ; 826)"
 Cause: I changed the name "azuo Sun" to "Kazuo SunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiter"...to make it as long as my...to-do list :)
