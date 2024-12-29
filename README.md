@@ -84,6 +84,10 @@ This is because we're using the bronze sample dataset which contains synthetic e
 - Check the job once completed for any errors linked to data validation e.g. row count
 
 
+#### Expectations met
+
+-- Did this test return the expected outcomes (Y/N)?
+EXPECTED_RESULTS_IN_TEST = "Y"
 
 
 ### 2. Test the Silver_To_Gold data contract
@@ -103,6 +107,11 @@ This is because we're using the silver sample dataset which contains synthetic e
 - Check the job once completed for any errors linked to data validation e.g. row count
 
 
+#### Expectations met
+
+-- Did this test return the expected outcomes (Y/N)?
+EXPECTED_RESULTS_IN_TEST = ""
+
 ### 3. Test both data contracts (using the normal pii_dataset)
 
 #### Expected outcome
@@ -119,6 +128,11 @@ This is because we're using the silver sample dataset which contains synthetic e
 - Check the job once completed for any errors linked to data validation e.g. row count
 
 
+#### Expectations met
+
+-- Did this test return the expected outcomes (Y/N)?
+EXPECTED_RESULTS_IN_TEST = ""
+
 ### 4. Test both data contracts (By adding random errors in the pii_dataset)
 
 #### Expected outcome
@@ -134,3 +148,9 @@ This is because we're using the silver sample dataset which contains synthetic e
 - Manually trigger Airflow DAG
 - Check the job once completed for any errors linked to data validation e.g. row count
 
+
+
+#### Expectations met
+
+-- Did this test return the expected outcomes (Y/N)?
+EXPECTED_RESULTS_IN_TEST = ""

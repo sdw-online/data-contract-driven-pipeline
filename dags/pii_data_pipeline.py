@@ -13,7 +13,7 @@ from utils.transformer import transform_data
 
 
 
-TESTING_DATA_CONTRACT_MODE      = "Both"
+TESTING_DATA_CONTRACT_MODE      = "Bronze_To_Silver"
 
 
 # A. Test the B2S data contract only
