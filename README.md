@@ -119,7 +119,8 @@ EXPECTED_RESULTS_IN_TEST = "Y"
 #### Expected outcome
 
 - The 1-bronze-bucket, 2-silver-bucket, 3-gold-bucket S3 buckets are created 
-- There are no validation errors at any stage
+- CSV files are loaded into all 3 buckets
+- There are no validation errors at any stage (as data meets contract expectations)
 
 
 
@@ -133,7 +134,7 @@ EXPECTED_RESULTS_IN_TEST = "Y"
 #### Expectations met
 
 -- Did this test return the expected outcomes (Y/N)?
-EXPECTED_RESULTS_IN_TEST = ""
+EXPECTED_RESULTS_IN_TEST = "Y"
 
 ### 4. Test both data contracts (By adding random errors in the pii_dataset)
 
