@@ -1,5 +1,5 @@
 import boto3
-from boto3.exceptions import ClientError
+from botocore.exceptions import ClientError
 
 def initialize_s3_client(aws_config):
 
