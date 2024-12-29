@@ -72,6 +72,7 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
 #### Expected outcome
 
 - The 1-bronze-bucket S3 bucket is created 
+- Data is NOT loaded into bronze S3 bucket (due to data failing to meet contract expectations)
 - Validation fails at bronze layer
 
 This is because we're using the bronze sample dataset which contains synthetic errors added by myself to deliberately break the workflow. 
@@ -95,6 +96,7 @@ EXPECTED_RESULTS_IN_TEST = "Y"
 #### Expected outcome
 
 - The 2-silver-bucket S3 bucket is created 
+- Data is NOT loaded into silver S3 bucket (due to data failing to meet contract expectations)
 - Validation fails at silver layer
 
 This is because we're using the silver sample dataset which contains synthetic errors added by myself to deliberately break the workflow. 
@@ -110,7 +112,7 @@ This is because we're using the silver sample dataset which contains synthetic e
 #### Expectations met
 
 -- Did this test return the expected outcomes (Y/N)?
-EXPECTED_RESULTS_IN_TEST = ""
+EXPECTED_RESULTS_IN_TEST = "Y"
 
 ### 3. Test both data contracts (using the normal pii_dataset)
 
