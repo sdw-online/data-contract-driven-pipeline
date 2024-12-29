@@ -51,11 +51,11 @@ default_args = {
 }
 
 with DAG(
-    "data_pipeline_dag",
+    "pii_data_pipeline_dag",
     default_args=default_args,
-    description="Data pipeline to validate, transform, and load datasets",
+    description="A DAG for validating + processing PII datasets",
     schedule_interval=None,
-    start_date=datetime(2024, 12, 28),
+    start_date=datetime(2024, 12, 29),
     catchup=False,
 ) as dag:
 

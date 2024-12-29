@@ -58,3 +58,79 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
         - Perform a row count✅
         - Perform a column count✅
         - Check column names✅
+
+----
+
+# Test
+
+## End-to-end tests:
+
+
+### 1. Test the Bronze_To_Silver data contract 
+
+
+#### Expected outcome
+
+- The 1-bronze-bucket S3 bucket is created 
+- Validation fails at bronze layer
+
+This is because we're using the bronze sample dataset which contains synthetic errors added by myself to deliberately break the workflow. 
+
+
+#### Steps
+
+- Set "TESTING_DATA_CONTRACT_MODE " to "Bronze_To_Silver" in pii_data_pipeline.py
+- Manually trigger Airflow DAG
+- Check the job once completed for any errors linked to data validation e.g. row count
+
+
+
+
+### 2. Test the Silver_To_Gold data contract
+
+#### Expected outcome
+
+- The 2-silver-bucket S3 bucket is created 
+- Validation fails at silver layer
+
+This is because we're using the silver sample dataset which contains synthetic errors added by myself to deliberately break the workflow. 
+
+
+#### Steps
+
+- Set "TESTING_DATA_CONTRACT_MODE " to "Silver_To_Gold" in pii_data_pipeline.py
+- Manually trigger Airflow DAG
+- Check the job once completed for any errors linked to data validation e.g. row count
+
+
+### 3. Test both data contracts (using the normal pii_dataset)
+
+#### Expected outcome
+
+- The 1-bronze-bucket, 2-silver-bucket, 3-gold-bucket S3 buckets are created 
+- There are no validation errors at any stage
+
+
+
+#### Steps
+
+- Set "TESTING_DATA_CONTRACT_MODE " to "Both" in pii_data_pipeline.py
+- Manually trigger Airflow DAG
+- Check the job once completed for any errors linked to data validation e.g. row count
+
+
+### 4. Test both data contracts (By adding random errors in the pii_dataset)
+
+#### Expected outcome
+
+- There should be validation errors in the bronze or silver layer (Depending which data contract is being tested) 
+
+
+#### Steps
+
+- Set "TESTING_DATA_CONTRACT_MODE " to "Bronze_To_Silver" or "Silver_To_Gold" in pii_data_pipeline.py
+- Backup the original pii_dataset.csv
+- Manually add errors to the original pii_dataset.csv
+- Manually trigger Airflow DAG
+- Check the job once completed for any errors linked to data validation e.g. row count
+
