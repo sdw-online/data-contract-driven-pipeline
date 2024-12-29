@@ -3,7 +3,7 @@
     "version": "1.0",
     "schema": {
         "columns": [
-            {"name": "document", "type": "string", "constraints": {"not_null": true}},
+            {"name": "document", "type": "string", "constraints": {"not_null": true} },
             {"name": "name", "type": "string", "constraints": {"not_null": true, "max_length": 100 }},
             {"name": "email", "type": "string"},
             {"name": "phone", "type": "string"},

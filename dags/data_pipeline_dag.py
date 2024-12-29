@@ -177,13 +177,13 @@ def upload_file_to_s3(s3_client, file_path, bucket_name, file_name):
         raise RuntimeError(f"[ERROR] - Unable to upload file '{file_name}': {e}")
 
 
-def download_file_from_s3(s3_client, bucket_name, file_name, local_path):
+def download_file_from_s3(s3_client, bucket_name, file_name, file_path):
     try:
         
-        s3_client.download_file(bucket_name, file_name, local_path)
-        print(f"File '{file_name}' downloaded successfully to '{local_path}'.")
+        s3_client.download_file(bucket_name, file_name, file_path)
+        print(f"File '{file_name}' downloaded successfully to '{file_path}'.")
 
-        return pd.read_csv(local_path)
+        return pd.read_csv(file_path)
     
     except ClientError as e:
         raise RuntimeError(f"[ERROR] - Unable to download file '{file_name}': {e}")
@@ -290,22 +290,37 @@ def validate_postgres_load(postgres_config, expected_row_count, expected_columns
 """ --- SELECTING DATASET ---"""
 @dataclass(frozen=True)  # Make the class immutable 
 class PIIDataSet:
-    local_path: str
+    file_path: str
     file_name: str
 
     @staticmethod
-    def select_dataset(use_sample: bool):
+    def select_dataset(layer: str, use_sample: bool):
 
-        main_dataset    = PIIDataSet(local_path="data/1_bronze/pii_dataset.csv", file_name="pii_dataset.csv")
-        sample_dataset  = PIIDataSet(local_path="data/1_bronze/sample_dataset.csv", file_name="sample_dataset.csv")
+        main_dataset    = PIIDataSet(file_path="data/1_bronze/pii_dataset.csv", file_name="pii_dataset.csv")
+        sample_dataset  = PIIDataSet(file_path="data/1_bronze/sample_dataset.csv", file_name="sample_dataset.csv")
 
-        if use_sample:
-            print("\nUsing 'sample' dataset for this data workflow...")
-            return sample_dataset
+        if layer == "bronze":
+
+            if use_sample:
+                print("\nUsing 'sample' dataset for the bronze layer...")
+                bronze_sample_dataset  = PIIDataSet(file_path="data/1_bronze/bronze_sample_dataset.csv", file_name="bronze_sample_dataset.csv")
+                return bronze_sample_dataset
+            
+            else:
+                print("\nUsing 'main' dataset for the bronze layer...")
+                bronze_main_dataset    = PIIDataSet(file_path="data/1_bronze/pii_dataset.csv", file_name="pii_dataset.csv")
+                return bronze_main_dataset
         
-        else:
-            print("\nUsing 'main' dataset for this data workflow...")
-            return main_dataset
+        elif layer == "silver":
+            if use_sample:
+                print("\nUsing 'sample' dataset for the silver layer...")
+                silver_sample_dataset  = PIIDataSet(file_path="data/2_silver/silver_sample_dataset.csv", file_name="silver_sample_dataset.csv")
+                return silver_sample_dataset
+            
+            else:
+                print("\nUsing 'main' dataset for the silver layer...")
+                silver_main_dataset    = PIIDataSet(file_path="data/1_bronze/pii_dataset.csv", file_name="pii_dataset.csv")
+                return silver_main_dataset
 
         
 
@@ -489,8 +504,8 @@ with DAG(
         check_if_bucket_exists(s3_client, BRONZE_BUCKET, AWS_REGION)
 
         # Resolve the full path to the dataset file inside the container
-        dataset     =   PIIDataSet.select_dataset(use_sample=False)
-        file_path   =   f"/opt/airflow/{dataset.local_path}"
+        dataset     =   PIIDataSet.select_dataset(layer="bronze", use_sample=False)
+        file_path   =   f"/opt/airflow/{dataset.file_path}"
 
         # Log the resolved file path
         print(f"Resolved dataset file path: {file_path}")
@@ -532,19 +547,20 @@ with DAG(
         print(f"Checking if bucket '{SILVER_BUCKET}' exists... ")
         check_if_bucket_exists(s3_client, SILVER_BUCKET, AWS_REGION)
         
-        # Download the Bronze dataset file from S3 to a local path
-        bronze_file                     = "bronze_csv_file.csv"
-        docker_container_bronze_path    = f"/opt/airflow/data/1_bronze/{bronze_file}"
-        bronze_df                       = download_file_from_s3(
-            s3_client, bucket_config["BRONZE_BUCKET"], 
-            "pii_dataset.csv", 
-            docker_container_bronze_path
-        )
+        # Use the main dataset, or sample one for testing 
+        silver_dataset                  = PIIDataSet.select_dataset(layer="silver", use_sample=True)
+        docker_container_silver_path    = f"/opt/airflow/{silver_dataset.file_path}"
+        
+        # Read dataset from silver zone in Docker container 
 
+        if not os.path.exists(docker_container_silver_path):
+            raise FileNotFoundError(f"[ERROR] - Unable to find file in Docker container under this filepath: {docker_container_silver_path}")
+
+        silver_df = pd.read_csv(docker_container_silver_path)
 
         # Transform the raw data
         print(f"Transforming the raw data from bronze to silver ... ")
-        silver_df = transform_data(bronze_df) 
+        silver_df = transform_data(silver_df) 
 
         # Validate the downloaded Bronze dataset
         print(f"Validating silver data with S2G data contract...")
