@@ -12,6 +12,50 @@ from botocore.exceptions import ClientError
 from dataclasses import dataclass
 
 
+
+# Constants
+DATABASE_NAME   = "prod_db"
+SCHEMA_NAME     = "gold_layer"
+TABLE_NAME      = "pii_records_tbl"
+
+
+# SQL queries 
+CREATE_TABLE_QUERY = f"""
+    CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.{TABLE_NAME} (
+            document    TEXT NOT NULL,
+            name        TEXT NOT NULL,
+            email       TEXT,
+            phone       TEXT,
+            len         INT
+            );
+"""
+
+CREATE_SCHEMA_QUERY = f"""
+    CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}
+    ;
+"""
+
+
+TRUNCATE_TABLE_QUERY = f"""
+    TRUNCATE TABLE {SCHEMA_NAME}.{TABLE_NAME}
+    ;
+"""
+
+INSERT_DATA_QUERY = f"""
+    INSERT INTO {SCHEMA_NAME}.{TABLE_NAME} (document, name, email, phone, len)
+    VALUES  %s
+    ;
+"""
+
+GOLD_VALIDATION_QUERY = f"""
+    SELECT * 
+    FROM {SCHEMA_NAME}.{TABLE_NAME}
+    ;
+"""
+
+
+
+
 """ SETUP FUNCTIONS """
 
 def load_env_variables(SHOW_ENV_VARIABLES=True):
@@ -157,32 +201,31 @@ def test_postgres_connection(postgres_config):
     except Exception as e:
         print(f"[ERROR] - Failed to connect to PostgreSQL: {e} ")
 
-def check_if_postgres_objects_exist(postgres_config, truncate_table=True):
-
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS gold_dataset (
-        document TEXT NOT NULL,
-        name TEXT NOT NULL,
-        email TEXT,
-        phone TEXT,
-        len INT
-    );
-    """
+def initialize_postgres(postgres_config, truncate_table=True):
+    
     
     try:
         
         conn = psycopg2.connect(**postgres_config)
         cursor = conn.cursor()
-        cursor.execute(create_table_query)
+
+
+        # Create schema 
+        cursor.execute(CREATE_SCHEMA_QUERY)
+
+        # Create table
+        cursor.execute(CREATE_TABLE_QUERY)
         
+
+        # Truncate table if it contains data (i.e. truncate + load pattern)
         if truncate_table:
-            cursor.execute("TRUNCATE TABLE gold_dataset;")
+            cursor.execute(TRUNCATE_TABLE_QUERY)
 
         conn.commit()
         cursor.close()
         conn.close()
 
-        print("Postgres objects verified or created successfully.")
+        print(f"Postgres schema '{SCHEMA_NAME}' and '{TABLE_NAME}' verified/created successfully")
     
     except Exception as e:
         raise RuntimeError(f"[ERROR] - Unable to verify or create Postgres objects: {e}")
@@ -190,46 +233,45 @@ def check_if_postgres_objects_exist(postgres_config, truncate_table=True):
 
 
 def load_data_into_postgres(postgres_config, df):
-    """
-    Load the DataFrame into the Postgres table.
-    """
-    insert_query = """
-    INSERT INTO gold_dataset (document, name, email, phone, len)
-    VALUES %s
-    """
+
     try:
         conn = psycopg2.connect(**postgres_config)
         cursor = conn.cursor()
+        list_of_pii_records = df.values.tolist()
+        
         # Use `execute_values` for batch inserts
-        execute_values(cursor, insert_query, df.values.tolist())
+        execute_values(cursor, INSERT_DATA_QUERY, list_of_pii_records)
         conn.commit()
         cursor.close()
         conn.close()
-        print("[INFO] - Data successfully loaded into Postgres.")
+        
+        print(">>> Data successfully loaded into Postgres.")
+
     except Exception as e:
         raise RuntimeError(f"[ERROR] - Failed to load data into Postgres: {e}")
 
 
 def validate_postgres_load(postgres_config, expected_row_count, expected_columns):
     
-    validation_query = "SELECT * FROM gold_dataset;"
     try:
-        conn = psycopg2.connect(**postgres_config)
-        cursor = conn.cursor()
-        cursor.execute(validation_query)
-        rows = cursor.fetchall()
+        conn                = psycopg2.connect(**postgres_config)
+        cursor              = conn.cursor()
+        cursor.execute(GOLD_VALIDATION_QUERY)
+        rows                = cursor.fetchall()
+        actual_row_count    = len(rows)
+
         columns = [desc[0] for desc in cursor.description]
         cursor.close()
         conn.close()
 
         # Log row and column counts for debugging
-        print(f"Postgres row count:     {len(rows)},    Expected: {expected_row_count}")
+        print(f"Postgres row count:     {actual_row_count},    Expected: {expected_row_count}")
         print(f"Postgres columns:       {columns},      Expected: {expected_columns}")
 
         # Validate row count
-        if len(rows) != expected_row_count:
+        if actual_row_count != expected_row_count:
             raise ValueError(
-                f"[ERROR] - Row count mismatch in Postgres: Expected {expected_row_count}, Found {len(rows)}"
+                f"[ERROR] - Row count mismatch in Postgres: Expected {expected_row_count}, Found {actual_row_count}"
             )
 
         # Validate column names
@@ -540,7 +582,7 @@ with DAG(
 
         # Ensure Postgres target objects exist
         print("Ensuring Postgres objects exist...")
-        check_if_postgres_objects_exist(postgres_config)
+        initialize_postgres(postgres_config)
 
         # Load data into Postgres
         print("Loading data into Postgres...")
