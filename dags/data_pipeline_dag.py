@@ -19,6 +19,29 @@ SCHEMA_NAME     = "gold_layer"
 TABLE_NAME      = "pii_records_tbl"
 
 
+TESTING_DATA_CONTRACT_MODE      = "Silver_To_Gold"
+
+
+# A. Test the B2S data contract only
+if TESTING_DATA_CONTRACT_MODE == "Bronze_To_Silver":
+    bronze_use_sample_data = True
+    silver_use_sample_data = False
+
+# B. Test the S2G data contract only
+elif TESTING_DATA_CONTRACT_MODE == "Silver_To_Gold":
+    bronze_use_sample_data = False
+    silver_use_sample_data = True
+
+
+# C. Test both contracts 
+elif TESTING_DATA_CONTRACT_MODE == "Both":
+    bronze_use_sample_data = False
+    silver_use_sample_data = False
+
+else:
+    print(f"[ERROR] -- Unable to detect which test this is...: {TESTING_DATA_CONTRACT_MODE}")
+
+
 # SQL queries 
 CREATE_TABLE_QUERY = f"""
     CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.{TABLE_NAME} (
@@ -504,7 +527,7 @@ with DAG(
         check_if_bucket_exists(s3_client, BRONZE_BUCKET, AWS_REGION)
 
         # Resolve the full path to the dataset file inside the container
-        dataset     =   PIIDataSet.select_dataset(layer="bronze", use_sample=False)
+        dataset     =   PIIDataSet.select_dataset(layer="bronze", use_sample=bronze_use_sample_data)
         file_path   =   f"/opt/airflow/{dataset.file_path}"
 
         # Log the resolved file path
@@ -548,7 +571,7 @@ with DAG(
         check_if_bucket_exists(s3_client, SILVER_BUCKET, AWS_REGION)
         
         # Use the main dataset, or sample one for testing 
-        silver_dataset                  = PIIDataSet.select_dataset(layer="silver", use_sample=True)
+        silver_dataset                  = PIIDataSet.select_dataset(layer="silver", use_sample=silver_use_sample_data)
         docker_container_silver_path    = f"/opt/airflow/{silver_dataset.file_path}"
         
         # Read dataset from silver zone in Docker container 
