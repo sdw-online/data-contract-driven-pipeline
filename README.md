@@ -43,18 +43,18 @@ Website for dataset: "https://www.kaggle.com/datasets/alejopaullier/pii-external
         - Write a success message (to the console/logs) if validation passes✅
             - Otherwise, circuit break✅
 
-- Gold layer
-    - Check if gold bucket exists
-        - If not, create it
-    - Read the transformed and validated data from the silver layer into a pandas dataframe
-        - If the data doesn’t exist, re-run the silver layer’s task
-    - Check if the Postgres destination objects exist (database, schema, table)
-        - If not, create them
-        - If they do, delete and re-create them
+- Gold layer✅
+    - Check if gold bucket exists✅
+        - If not, create it✅
+    - Read the transformed and validated data from the silver layer into a pandas dataframe✅
+        - If the data doesn’t exist, re-run the silver layer’s task✅
+    - Check if the Postgres destination objects exist (database, schema, table)✅
+        - If not, create them✅
+        - If they do, delete and re-create them✅
 
-- Postgres
-    - Load data into target objects in Postgres
-    - Run validation checks to confirm load was successful
-        - Perform a row count
-        - Perform a column count
-        - Check column names
+- Postgres✅
+    - Load data into target objects in Postgres✅
+    - Run validation checks to confirm load was successful✅
+        - Perform a row count✅
+        - Perform a column count✅
+        - Check column names✅
