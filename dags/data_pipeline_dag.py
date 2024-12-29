@@ -157,11 +157,8 @@ def test_postgres_connection(postgres_config):
     except Exception as e:
         print(f"[ERROR] - Failed to connect to PostgreSQL: {e} ")
 
-def check_if_postgres_objects_exist(postgres_config):
-    """
-    Check if the database, schema, and table exist in Postgres. 
-    Create them if they don't.
-    """
+def check_if_postgres_objects_exist(postgres_config, truncate_table=True):
+
     create_table_query = """
     CREATE TABLE IF NOT EXISTS gold_dataset (
         document TEXT NOT NULL,
@@ -171,17 +168,25 @@ def check_if_postgres_objects_exist(postgres_config):
         len INT
     );
     """
-
+    
     try:
+        
         conn = psycopg2.connect(**postgres_config)
         cursor = conn.cursor()
         cursor.execute(create_table_query)
+        
+        if truncate_table:
+            cursor.execute("TRUNCATE TABLE gold_dataset;")
+
         conn.commit()
         cursor.close()
         conn.close()
-        print("[INFO] - Postgres objects verified or created successfully.")
+
+        print("Postgres objects verified or created successfully.")
+    
     except Exception as e:
         raise RuntimeError(f"[ERROR] - Unable to verify or create Postgres objects: {e}")
+
 
 
 def load_data_into_postgres(postgres_config, df):
@@ -206,9 +211,7 @@ def load_data_into_postgres(postgres_config, df):
 
 
 def validate_postgres_load(postgres_config, expected_row_count, expected_columns):
-    """
-    Validate the data load in Postgres by performing row and column checks.
-    """
+    
     validation_query = "SELECT * FROM gold_dataset;"
     try:
         conn = psycopg2.connect(**postgres_config)
@@ -218,6 +221,10 @@ def validate_postgres_load(postgres_config, expected_row_count, expected_columns
         columns = [desc[0] for desc in cursor.description]
         cursor.close()
         conn.close()
+
+        # Log row and column counts for debugging
+        print(f"Postgres row count:     {len(rows)},    Expected: {expected_row_count}")
+        print(f"Postgres columns:       {columns},      Expected: {expected_columns}")
 
         # Validate row count
         if len(rows) != expected_row_count:
@@ -231,9 +238,11 @@ def validate_postgres_load(postgres_config, expected_row_count, expected_columns
                 f"[ERROR] - Column mismatch in Postgres: Expected {expected_columns}, Found {columns}"
             )
 
-        print("[INFO] - Postgres validation passed successfully.")
+        print("Postgres validation passed successfully.")
+
     except Exception as e:
         raise RuntimeError(f"[ERROR] - Postgres validation failed: {e}")
+
 
 
 """ --- SELECTING DATASET ---"""
