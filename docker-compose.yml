@@ -35,6 +35,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
+      - ./utils:/opt/airflow/utils
       - ./.env:/opt/airflow/.env
     restart: always
     depends_on:
@@ -60,6 +61,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
+      - ./utils:/opt/airflow/utils
       - ./.env:/opt/airflow/.env
     restart: always
     depends_on:
@@ -85,6 +87,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./contracts:/opt/airflow/contracts
+      - ./utils:/opt/airflow/utils
       - ./.env:/opt/airflow/.env
     depends_on:
       - postgres
