@@ -95,6 +95,13 @@ def validate_data(df, contract_path):
             has_duplicate_values = df[col_name].duplicated().any()
             if "unique" in constraints and has_duplicate_values:
                 raise ValueError(f"[ERROR] - Column '{col_name}' contains duplicate values.")
+        
+
+            if "max_length" in constraints:
+                expected_max_length = constraints["max_length"]
+                length_of_longest_value_in_col = df[col_name].dropna().str.len().max()
+                if length_of_longest_value_in_col > expected_max_length:
+                    raise ValueError(f"[ERROR] - Column '{col_name}' exceeds allowed max length of {expected_max_length}, which is '{length_of_longest_value_in_col}' ")
             
 
 

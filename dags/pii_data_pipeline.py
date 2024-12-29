@@ -154,6 +154,7 @@ with DAG(
         # Validate the downloaded Bronze dataset
         print(f"Validating silver data with S2G data contract...")
         SilverToGoldDataContract = "contracts/02_S2G_DataContract.json"
+        
         validate_data(silver_df, SilverToGoldDataContract)
         print(f"Silver data validation passed successfully ")
 
