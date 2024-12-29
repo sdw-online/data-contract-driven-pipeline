@@ -5,9 +5,9 @@ services:
     image: postgres:13
     container_name: postgres
     environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: prod_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
@@ -22,11 +22,11 @@ services:
     container_name: airflow-webserver
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/prod_db
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__WEBSERVER__SECRET_KEY: "D6GEME7iEc8fld5pepDyh8JNBWFrbQAHMS2P7vc4kXcWYhNV964hWbXy3z952LwRN2Bnx4g8fAqmIiLzNXJhYQ"
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
       PYTHONPATH: "/opt/airflow/modules"
       TZ: UTC
     ports:
@@ -49,11 +49,11 @@ services:
     container_name: airflow-scheduler
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/prod_db
-      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: "D6GEME7iEc8fld5pepDyh8JNBWFrbQAHMS2P7vc4kXcWYhNV964hWbXy3z952LwRN2Bnx4g8fAqmIiLzNXJhYQ"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
       PYTHONPATH: "/opt/airflow/modules"
       TZ: UTC
     volumes:
@@ -73,8 +73,8 @@ services:
     image: apache/airflow:2.7.0
     container_name: airflow-init
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/prod_db
-      AIRFLOW__WEBSERVER__SECRET_KEY: "D6GEME7iEc8fld5pepDyh8JNBWFrbQAHMS2P7vc4kXcWYhNV964hWbXy3z952LwRN2Bnx4g8fAqmIiLzNXJhYQ"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
       TZ: UTC
     entrypoint: >
       sh -c "

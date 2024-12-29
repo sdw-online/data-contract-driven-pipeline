@@ -296,8 +296,8 @@ class PIIDataSet:
     @staticmethod
     def select_dataset(use_sample: bool):
 
-        main_dataset    = PIIDataSet(local_path="data/raw/pii_dataset.csv", file_name="pii_dataset.csv")
-        sample_dataset  = PIIDataSet(local_path="data/raw/sample_dataset.csv", file_name="sample_dataset.csv")
+        main_dataset    = PIIDataSet(local_path="data/1_bronze/pii_dataset.csv", file_name="pii_dataset.csv")
+        sample_dataset  = PIIDataSet(local_path="data/1_bronze/sample_dataset.csv", file_name="sample_dataset.csv")
 
         if use_sample:
             print("\nUsing 'sample' dataset for this data workflow...")
@@ -534,7 +534,7 @@ with DAG(
         
         # Download the Bronze dataset file from S3 to a local path
         bronze_file                     = "bronze_csv_file.csv"
-        docker_container_bronze_path    = f"/opt/airflow/data/raw/{bronze_file}"
+        docker_container_bronze_path    = f"/opt/airflow/data/1_bronze/{bronze_file}"
         bronze_df                       = download_file_from_s3(
             s3_client, bucket_config["BRONZE_BUCKET"], 
             "pii_dataset.csv", 
@@ -553,7 +553,7 @@ with DAG(
         print(f"Silver data validation passed successfully ")
 
         # Convert transformed data to CSV
-        docker_container_silver_path = f"/opt/airflow/data/transformed/transformed_pii_dataset.csv"
+        docker_container_silver_path = f"/opt/airflow/data/2_silver/transformed_pii_dataset.csv"
         silver_df.to_csv(docker_container_silver_path, index=False)
 
         # Upload the transformed Silver dataset to the Silver bucket in S3
@@ -580,12 +580,22 @@ with DAG(
         # Download Silver dataset from S3 to local path
         SILVER_BUCKET       = bucket_config["SILVER_BUCKET"]
         silver_file         = "transformed_pii_dataset.csv"
-        docker_container_silver_path   = f"/opt/airflow/data/transformed/{silver_file}"
+        docker_container_silver_path   = f"/opt/airflow/data/2_silver/{silver_file}"
         silver_df           = download_file_from_s3(
             s3_client, SILVER_BUCKET, silver_file, docker_container_silver_path
         )
 
         print("Silver dataset successfully loaded into df.")
+
+        # Copy silver data into gold S3 bucket
+        gold_file = "user_access_pii_dataset.csv"
+        docker_container_gold_path = f"/opt/airflow/data/3_gold/{gold_file}"
+        silver_df.to_csv(docker_container_gold_path, index=False)
+        upload_file_to_s3(s3_client, docker_container_gold_path, GOLD_BUCKET, gold_file)
+
+        print(f"Transformed data successfully copied to gold S3 bucket '{GOLD_BUCKET}' as '{gold_file}' ")
+
+        gold_df = download_file_from_s3(s3_client, GOLD_BUCKET, gold_file, docker_container_gold_path)
 
         # Ensure Postgres target objects exist
         print("Ensuring Postgres objects exist...")
@@ -593,13 +603,13 @@ with DAG(
 
         # Load data into Postgres
         print("Loading data into Postgres...")
-        load_data_into_postgres(postgres_config, silver_df)
+        load_data_into_postgres(postgres_config, gold_df)
 
         # Validate data in Postgres
         print("Validating data in Postgres...")
         validate_postgres_load(
             postgres_config,
-            expected_row_count=len(silver_df),
+            expected_row_count=len(gold_df),
             expected_columns=["document", "name", "email", "phone", "len"],
         )
 
