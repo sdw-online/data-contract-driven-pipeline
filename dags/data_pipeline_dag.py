@@ -1,15 +1,15 @@
+import os
+import json
+import pandas as pd
+from dotenv import load_dotenv
+from dataclasses import dataclass
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-import os
 import psycopg2
 from psycopg2.extras import execute_values
-from dotenv import load_dotenv
-import pandas as pd
-import json
 import boto3
 from botocore.exceptions import ClientError
-from dataclasses import dataclass
 
 
 
@@ -130,11 +130,11 @@ def initialize_s3_client(aws_config):
     try:
         s3_client = boto3.client(
             "s3",
-            aws_access_key_id=aws_config["AWS_ACCESS_KEY"],
-            aws_secret_access_key=aws_config["AWS_SECRET_KEY"],
-            region_name=aws_config["AWS_REGION"]
+            aws_access_key_id       =aws_config["AWS_ACCESS_KEY"],
+            aws_secret_access_key   =aws_config["AWS_SECRET_KEY"],
+            region_name             =aws_config["AWS_REGION"]
         )
-        print("[INFO] - S3 client initialized successfully")
+        print("S3 client initialized successfully")
         
         return s3_client
 
@@ -156,10 +156,10 @@ def check_if_bucket_exists(s3_client, bucket_name, region):
                 Bucket=bucket_name,
                 CreateBucketConfiguration={"LocationConstraint": region},
             )
-            print(f"[INFO] - Bucket '{bucket_name}' created successfully.")
+            print(f"Bucket '{bucket_name}' created successfully.")
 
         else:
-            print(f"[INFO] - Bucket '{bucket_name}' already exists.")
+            print(f"Bucket '{bucket_name}' already exists.")
     
     except ClientError as e:
         raise RuntimeError(f"[ERROR] - Unable to create/check bucket '{bucket_name}': {e}")
@@ -235,9 +235,9 @@ def initialize_postgres(postgres_config, truncate_table=True):
 def load_data_into_postgres(postgres_config, df):
 
     try:
-        conn = psycopg2.connect(**postgres_config)
-        cursor = conn.cursor()
-        list_of_pii_records = df.values.tolist()
+        conn                    = psycopg2.connect(**postgres_config)
+        cursor                  = conn.cursor()
+        list_of_pii_records     = df.values.tolist()
         
         # Use `execute_values` for batch inserts
         execute_values(cursor, INSERT_DATA_QUERY, list_of_pii_records)
@@ -296,8 +296,8 @@ class PIIDataSet:
     @staticmethod
     def select_dataset(use_sample: bool):
 
-        main_dataset = PIIDataSet(local_path="data/raw/pii_dataset.csv", file_name="pii_dataset.csv")
-        sample_dataset = PIIDataSet(local_path="data/raw/sample_dataset.csv", file_name="sample_dataset.csv")
+        main_dataset    = PIIDataSet(local_path="data/raw/pii_dataset.csv", file_name="pii_dataset.csv")
+        sample_dataset  = PIIDataSet(local_path="data/raw/sample_dataset.csv", file_name="sample_dataset.csv")
 
         if use_sample:
             print("\nUsing 'sample' dataset for this data workflow...")
@@ -316,14 +316,14 @@ def transform_data(df):
     print("\n>>> Transforming raw data ...")
     
     # Extract + transform relevant columns
-    required_columns = ["document", "name", "email", "phone", "len"]
-    df = df[required_columns]
+    required_columns    = ["document", "name", "email", "phone", "len"]
+    df                  = df[required_columns]
     
     # Remove whitespace from name column
-    df["name"] = df["name"].str.strip()
+    df["name"]          = df["name"].str.strip()
 
     # Convert email characters to lowercase 
-    df["email"] = df["email"].str.lower()
+    df["email"]         = df["email"].str.lower()
 
     print("Transformation in Silver layer completed successfully")
 
@@ -353,8 +353,9 @@ def validate_data(df, contract_path):
         print("\n>>> Performing bronze-to-silver data validation checks...")
 
         # Validate row count
-        expected_min_row_count = validation_rules.get("row_count_min", 0)
-        actual_row_count = len(df)
+        expected_min_row_count  = validation_rules.get("row_count_min", 0)
+        actual_row_count        = len(df)
+        
         if actual_row_count < expected_min_row_count:
             raise ValueError(
                 f"[ERROR] - Row count validation failed: Expected at least {expected_min_row_count} rows, but found {actual_row_count}."
@@ -492,7 +493,7 @@ with DAG(
         file_path   =   f"/opt/airflow/{dataset.local_path}"
 
         # Log the resolved file path
-        print(f"[INFO] - Resolved dataset file path: {file_path}")
+        print(f"Resolved dataset file path: {file_path}")
 
         # Check if the file exists before uploading
         if not os.path.exists(file_path):
@@ -505,6 +506,7 @@ with DAG(
         # Validate against the B2S data contract
         print(f"Validating bronze data with B2S data contract...")
         BronzeToSilverDataContract = "contracts/01_B2S_DataContract.json"
+        
         validate_data(bronze_df, BronzeToSilverDataContract)
         print(f"Bronze data validation passed successfully ")
 
@@ -522,18 +524,21 @@ with DAG(
     # Task 4: Transform and upload dataset to Silver layer
     def run_silver_layer():
         aws_config, bucket_config, _not_needed = load_env_variables()
-        s3_client = initialize_s3_client(aws_config)
-        SILVER_BUCKET = bucket_config["SILVER_BUCKET"]
-        AWS_REGION = aws_config["AWS_REGION"]
+        s3_client       = initialize_s3_client(aws_config)
+        
+        SILVER_BUCKET   = bucket_config["SILVER_BUCKET"]
+        AWS_REGION      = aws_config["AWS_REGION"]
 
         print(f"Checking if bucket '{SILVER_BUCKET}' exists... ")
         check_if_bucket_exists(s3_client, SILVER_BUCKET, AWS_REGION)
         
         # Download the Bronze dataset file from S3 to a local path
-        bronze_file = "bronze_csv_file.csv"
-        local_bronze_path = f"/opt/airflow/data/raw/{bronze_file}"
-        bronze_df = download_file_from_s3(
-            s3_client, bucket_config["BRONZE_BUCKET"], "pii_dataset.csv", local_bronze_path
+        bronze_file                     = "bronze_csv_file.csv"
+        docker_container_bronze_path    = f"/opt/airflow/data/raw/{bronze_file}"
+        bronze_df                       = download_file_from_s3(
+            s3_client, bucket_config["BRONZE_BUCKET"], 
+            "pii_dataset.csv", 
+            docker_container_bronze_path
         )
 
 
@@ -548,11 +553,11 @@ with DAG(
         print(f"Silver data validation passed successfully ")
 
         # Convert transformed data to CSV
-        local_silver_path = f"/opt/airflow/data/transformed/silver_layer.csv"
-        silver_df.to_csv(local_silver_path, index=False)
+        docker_container_silver_path = f"/opt/airflow/data/transformed/transformed_pii_dataset.csv"
+        silver_df.to_csv(docker_container_silver_path, index=False)
 
         # Upload the transformed Silver dataset to the Silver bucket in S3
-        upload_file_to_s3(s3_client, local_silver_path, bucket_config["SILVER_BUCKET"], "silver_layer.csv")
+        upload_file_to_s3(s3_client, docker_container_silver_path, SILVER_BUCKET, "transformed_pii_dataset.csv")
 
     run_silver_layer_task = PythonOperator(
         task_id="run_silver_layer",
@@ -563,19 +568,21 @@ with DAG(
 
     def run_gold_layer():
         aws_config, bucket_config, postgres_config = load_env_variables()
-        s3_client = initialize_s3_client(aws_config)
-        GOLD_BUCKET = bucket_config["GOLD_BUCKET"]
-        AWS_REGION = aws_config["AWS_REGION"]
+        s3_client       = initialize_s3_client(aws_config)
+        
+        GOLD_BUCKET     = bucket_config["GOLD_BUCKET"]
+        AWS_REGION      = aws_config["AWS_REGION"]
 
         # Check if Gold S3 bucket exists
         print(f"Checking if bucket '{GOLD_BUCKET}' exists...")
         check_if_bucket_exists(s3_client, GOLD_BUCKET, AWS_REGION)
 
         # Download Silver dataset from S3 to local path
-        silver_file = "silver_layer.csv"
-        local_silver_path = f"/opt/airflow/data/transformed/{silver_file}"
-        silver_df = download_file_from_s3(
-            s3_client, bucket_config["SILVER_BUCKET"], silver_file, local_silver_path
+        SILVER_BUCKET       = bucket_config["SILVER_BUCKET"]
+        silver_file         = "transformed_pii_dataset.csv"
+        docker_container_silver_path   = f"/opt/airflow/data/transformed/{silver_file}"
+        silver_df           = download_file_from_s3(
+            s3_client, SILVER_BUCKET, silver_file, docker_container_silver_path
         )
 
         print("Silver dataset successfully loaded into df.")
