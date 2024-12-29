@@ -1,5 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
+import pandas as pd
 
 def initialize_s3_client(aws_config):
 

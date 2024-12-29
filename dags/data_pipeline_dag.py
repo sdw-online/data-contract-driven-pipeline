@@ -7,7 +7,7 @@ from utils.aws_utils import initialize_s3_client, check_if_bucket_exists, upload
 from utils.data_selector import PIIDataSet
 from utils.data_validation import validate_data
 from utils.env_utils import load_env_variables
-from utils.postgres_utils import initialize_postgres, load_data_into_postgres, validate_postgres_load
+from utils.postgres_utils import initialize_postgres, test_postgres_connection, load_data_into_postgres, validate_postgres_load
 from utils.transformer import transform_data
 
 
