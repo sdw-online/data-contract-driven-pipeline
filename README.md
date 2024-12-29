@@ -155,5 +155,18 @@ EXPECTED_RESULTS_IN_TEST = "Y"
 
 #### Expectations met
 
+
+
+##### Test 4.1. Bronze_To_Silver contract
+
+-- Did this test return the expected outcomes (Y/N)?
+EXPECTED_RESULTS_IN_TEST = "Y"
+
+Error message returned: "([ERROR] - Column count validation failed: Expected 16 columns, but found 17.; 365)"
+Cause: I added a fake_column, which increased the column count from 16 to 17
+
+
+##### Test 4.2. Silver_To_Gold contract
+
 -- Did this test return the expected outcomes (Y/N)?
 EXPECTED_RESULTS_IN_TEST = ""
