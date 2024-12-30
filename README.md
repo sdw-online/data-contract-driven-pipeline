@@ -172,4 +172,34 @@ Cause: I added a fake_column, which increased the column count from 16 to 17
 EXPECTED_RESULTS_IN_TEST = "Y"
 
 Error message returned: "([ERROR] - Column 'name' exceeds allowed max length of 100, which is '194' ; 826)"
-Cause: I changed the name "azuo Sun" to "Kazuo SunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiter"...to make it as long as my...to-do list :)
+Cause: I changed the name "azuo Sun" to "Kazuo SunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiterSunMoonStarsPlanetsMercuryVenusEarthMarsJupiter"...to make it as long as my...to-do list :) 
+
+
+
+
+Make sure your populate your .env with the right credentials:
+```bash
+# AWS S3
+AWS_ACCESS_KEY      = "xxxxxx"
+AWS_SECRET_KEY      = "xxxxxx"
+AWS_REGION          = "xxxxxx"
+
+
+BRONZE_BUCKET       = ""xxxxxx"
+SILVER_BUCKET       = "xxxxxx"
+GOLD_BUCKET         = "xxxxxx"
+
+
+# Postgres 
+POSTGRES_HOST       = "postgres"
+POSTGRES_PORT       = "5432"
+POSTGRES_DB         = "prod_db"
+POSTGRES_USER       = "airflow"
+POSTGRES_PASSWORD   = "airflow"
+
+
+# Airflow 
+AIRFLOW__DATABASE__SQL_ALCHEMY_CONN     = "xxxxxx"
+AIRFLOW__CORE__FERNET_KEY               ="xxxxxx"
+AIRFLOW__WEBSERVER__SECRET_KEY          ="xxxxxx"
+```
