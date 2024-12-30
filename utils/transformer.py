@@ -4,7 +4,10 @@ def transform_data(df):
     # Extract + transform relevant columns
     required_columns    = ["document", "name", "email", "phone", "len"]
     df                  = df[required_columns]
-    
+
+    # Convert document from UUID to string    
+    df["document"] = df["document"].astype(str)
+
     # Remove whitespace from name column
     df["name"]          = df["name"].str.strip()
 
