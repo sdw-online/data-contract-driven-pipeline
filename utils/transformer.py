@@ -1,3 +1,5 @@
+import pandas as pd 
+
 def transform_data(df):
     print("\n>>> Transforming raw data ...")
     
@@ -11,8 +13,12 @@ def transform_data(df):
     df["email"]         = df["email"].astype(str)
     df["phone"]         = df["phone"].astype(str)
 
+    # Drop rows with NULLs
+    df = df[pd.to_numeric(df["len"], errors="coerce").notnull()]  
+    
     # Convert len to integer data type
-    df["len"]           = df["len"].astype(int)
+    df["len"] = df["len"].astype(float).astype(int)  
+
 
     # Remove whitespace from name column
     df["name"]          = df["name"].str.strip()
